@@ -34,7 +34,7 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="/mnt/data/yuxi/safe-rlhf/sft-llama2-7b-bs256"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-noeval-sqa"
+OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-noeval-sqa-lp"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"

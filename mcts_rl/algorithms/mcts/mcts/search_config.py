@@ -6,7 +6,7 @@ from tqdm import trange, tqdm
 from string import punctuation
 
 import nltk
-nltk.download('punkt')
+# nltk.download('punkt')
 from nltk.tokenize import sent_tokenize
 
 import deepspeed
