@@ -17,14 +17,20 @@
 from __future__ import annotations
 
 from typing import Any
+from tqdm import tqdm
 
 import torch
+import torch.distributed as dist
 from transformers import AutoModelForCausalLM
 from transformers.modeling_outputs import CausalLMOutputWithPast
 
 from mcts_rl.datasets import SupervisedDataset
 from mcts_rl.trainers import SupervisedTrainer
-from mcts_rl.utils import get_all_reduce_mean
+from mcts_rl.utils import (
+    get_all_reduce_mean, 
+    is_main_process, 
+    to_device,
+)
 
 
 class SupervisedFinetuneTrainer(SupervisedTrainer):
@@ -48,6 +54,51 @@ class SupervisedFinetuneTrainer(SupervisedTrainer):
         )
         return {
             'loss': outputs.loss,
+        }
+    
+    def eval(
+        self,
+    ) -> dict[str, Any]:
+        if self.eval_dataloader is None:
+            return {}
+        
+        self.set_eval()
+        eval_dataloader = tqdm(
+            self.eval_dataloader,
+            desc='Evaluating',
+            disable=not is_main_process(),
+            position=1,
+            leave=False,
+        )
+
+        losses, batch = [], None
+        for batch in eval_dataloader:
+            batch = to_device(batch, self.args.device)
+            with torch.no_grad():
+                loss = self.loss(
+                    input_ids=batch['input_ids'],
+                    labels=batch['labels'],
+                    attention_mask=batch['attention_mask'],
+                )['loss']
+            losses.extend([loss])
+        
+        if batch is None:
+            self.logger.print('WARNING: `eval_dataloader` is empty.')
+            return {}
+        
+        losses = torch.stack(losses, dim=0)
+        if is_main_process():
+            gathered_losses = [torch.empty_like(losses) for _ in range(dist.get_world_size())]
+        else:
+            gathered_losses = []
+        dist.gather(losses, gathered_losses, dst=0)
+        if is_main_process():
+            losses = torch.cat(gathered_losses, dim=0)
+        
+        self.set_train()
+        
+        return {
+            'eval/loss': losses.mean().item(),
         }
 
     def train_step(

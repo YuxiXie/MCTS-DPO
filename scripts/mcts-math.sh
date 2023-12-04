@@ -35,10 +35,10 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-arithmo/gsm"
+OUTPUT_DIR="/home/yuxi/Models/MCTS/mcts-dpo-arithmo/gsm"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="optimizer"
+OFFLOAD="parameter"
 while [[ "$#" -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -126,7 +126,7 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=2
+gpu_vis=7
 MASTER_PORT=23457
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \

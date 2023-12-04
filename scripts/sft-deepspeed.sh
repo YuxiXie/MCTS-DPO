@@ -27,11 +27,11 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/sft"
+MODEL_NAME_OR_PATH="facebook/opt-2.7b"
+OUTPUT_DIR="/home/yuxi/Models/MCTS/sft-opt-2.7b"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="all"
+OFFLOAD="optimizer"
 while [[ "$#" -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -108,38 +108,42 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
-export WANDB_MODE=dryrun
+export WANDB_MODE=online
 
 # export NCCL_P2P_DISABLE=1
 # export NCCL_IB_DISABLE=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
+gpu_vis=4,5,6,7
 MASTER_PORT=33456
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.finetune \
-	--train_datasets MATH/train \
+	--train_datasets Arithmo/train \
+	--eval_datasets Arithmo/test \
 	--model_name_or_path "${MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--trust_remote_code True \
 	--epochs 3 \
-	--per_device_train_batch_size 8 \
-	--per_device_eval_batch_size 4 \
-	--gradient_accumulation_steps 8 \
+	--per_device_train_batch_size 64 \
+	--per_device_eval_batch_size 16 \
+	--gradient_accumulation_steps 2 \
 	--gradient_checkpointing \
 	--learning_rate 2e-5 \
 	--lr_scheduler_type cosine \
 	--lr_warmup_ratio 0.03 \
 	--weight_decay 0.0 \
 	--seed 42 \
+	--need_eval \
+	--eval_strategy steps \
+	--eval_interval 500 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project SFT-MATH \
+	--log_project SFT-ARITHMO \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--save_interval 128
+	--save_interval 1000
