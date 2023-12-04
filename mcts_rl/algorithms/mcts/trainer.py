@@ -143,6 +143,8 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
+        exec('''import pickle\nwith open('mcts_rst_gsm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        
         while cur_node.depth:
             cur_node = cur_node.parent
         
@@ -158,9 +160,9 @@ class MCTSTrainer(TSRLTrainer):
                 next_completions.append(torch.cat(next_completion, dim=-1))
             
             # record the scores: \pi (visiting count), Q values, advantages (relative values), base/init (absolute) values
-            scores = [(s, q, r, bv) for s, q, r, bv in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id],)]
+            scores = [(q, s, r, bv) for s, q, r, bv in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id],)]
             _candidates = [[x[1], scores[x[0]]] for x in sorted(enumerate(next_completions), key=lambda x: scores[x[0]])]
-            init_values = [x[1][-1] for x in _candidates]
+            init_values = [x[1][1] for x in _candidates]
             _candidates = [x[0] for x in _candidates]
             prompts.append(prompt)
             candidates.append(_candidates)
@@ -248,7 +250,7 @@ class MCTSTrainer(TSRLTrainer):
             better_attention_mask, worse_attention_mask = attention_mask[-1], attention_mask[0]
             better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[-1], sequence_log_probs[0]
             ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[-1], ref_sequence_log_probs[0]
-            # better_init_value, worse_init_value = min(1.0 - 1e-3, max(1e-3, init_values[-1])), min(1.0 - 1e-3, max(1e-3, init_values[0]))
+            # better_init_value, worse_init_value = init_values[-1], init_values[0]
             
             better_end_index = better_attention_mask.nonzero()[-1]
             worse_end_index = worse_attention_mask.nonzero()[-1]
@@ -266,8 +268,8 @@ class MCTSTrainer(TSRLTrainer):
             worse_log_probs = worse_sequence_log_probs[worse_seq_slice].sum(dim=-1)
             ref_better_log_probs = ref_better_sequence_log_probs[better_seq_slice].sum(dim=-1)
             ref_worse_log_probs = ref_worse_sequence_log_probs[worse_seq_slice].sum(dim=-1)
-            better_log_ratio = (better_log_probs - ref_better_log_probs)
-            worse_log_ratio = (worse_log_probs - ref_worse_log_probs)
+            better_log_ratio = better_log_probs - ref_better_log_probs
+            worse_log_ratio = worse_log_probs - ref_worse_log_probs
             
             losses.append(-F.logsigmoid(self.scale_coeff * (better_log_ratio - worse_log_ratio)))
             better_sample_rewards.append(self.scale_coeff * better_log_ratio.detach())

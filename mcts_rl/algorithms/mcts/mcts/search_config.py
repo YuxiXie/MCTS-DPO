@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import trange, tqdm
 from string import punctuation
 
-import nltk
+# import nltk
 # nltk.download('punkt')
 from nltk.tokenize import sent_tokenize
 
@@ -181,7 +181,7 @@ class StepLMConfig(SearchConfig):
                     continue
                 sequences_list.append(gen_ids)
                 unique_text_list.append(text)
-        
+            
         if not len(sequences_list):
             sequences_list.append(torch.tensor([self.base_tokenizer.eos_token_id]).to(input_ids.device))
             unique_text_list.append(self.base_tokenizer.eos_token)
@@ -303,7 +303,7 @@ class StepLMConfig(SearchConfig):
             
             if isinstance(gt_ans, str):
                 correct = math_equal(extract_answer(generated), gt_ans)
-                correct_score = 1 if correct else -.5
+                correct_score = 1 if correct else -1
             else:
                 correct_score = csr_equal(generated, gt_ans)
             return response, conf, correct_score
@@ -338,7 +338,7 @@ class StepLMConfig(SearchConfig):
                 eval_prompt = HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, prompt=init_answer + step)
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, gt_ans, action.device)
             
-            print(eval_prompt + eval_result + f' ({eval_conf})')
+            print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN):
                 score += eval_correct_score

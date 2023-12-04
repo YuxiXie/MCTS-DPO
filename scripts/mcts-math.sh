@@ -35,7 +35,7 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-mcq/sqa"
+OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-arithmo/gsm"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -126,13 +126,13 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
-MASTER_PORT=23456
+gpu_vis=3
+MASTER_PORT=23457
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets SQA/train \
+	--train_datasets GSM8K/train \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
@@ -162,7 +162,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.1 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-MCQ \
+	--log_project MCTS-DPO-ARITHMO \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \

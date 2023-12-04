@@ -38,13 +38,15 @@ def format_prompt(
         raise ValueError(
             'The length of `input` must be odd, while `input` must end at the user question.',
         )
-    buffer = [PROMPT_BEGIN]
-    # buffer = []
-    # buffer = [MATH_PROMPT + '\n\n']
+    
+    if 'USER:' in PROMPT_USER:
+        buffer = [PROMPT_BEGIN]
+    else:
+        buffer = []
+    
     for i, line in enumerate(input):
         if i % 2 == 0:
             # User input
-            # buffer.extend((PROMPT_USER.format(input=line) + random.choice(COT_INSTRUCTIONS) + ' ', PROMPT_ASSISTANT))
             buffer.extend((PROMPT_USER.format(input=line), PROMPT_ASSISTANT))
         else:
             # Assistant response

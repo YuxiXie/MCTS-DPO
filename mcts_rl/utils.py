@@ -25,6 +25,8 @@ from collections import OrderedDict
 from typing import Any, Callable, Generator, TypeVar, cast
 from typing_extensions import TypeAlias  # Python 3.10+
 
+from nltk.tokenize import sent_tokenize
+
 import numpy as np
 import optree
 from string import punctuation
@@ -646,9 +648,12 @@ def csr_equal(prediction, reference):
             options = [x for i, x in enumerate(options) if x not in options[i+1:]]
             prediction = options[-1].strip(punctuation)
     
-    if regex.match(f'The answer is [A-Z1-9]', raw_prediction.strip()):
+    sents = sent_tokenize(raw_prediction)    
+    if regex.match(f'The .*answer is .*[A-Z1-9]', raw_prediction.strip()) or \
+        (len(sents) == 1 and regex.search('.* answer is .*[A-Z1-9]', raw_prediction)):
         # Simply returning the final results is not valid
         return 0 if prediction == option.strip(punctuation) else -1    
+    
     if prediction == option.strip(punctuation) and len(options) == 1 and format_flag:
         # Correct answer & readable format
         return 1

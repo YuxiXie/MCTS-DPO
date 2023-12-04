@@ -16,18 +16,12 @@ from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks
 
 
 class MCTSConfig(NamedTuple):
-    # step_wise: bool = True
     output_trace_in_each_iter: bool = False
     w_exp: float = 1.
     depth_limit: int = 5
     breadth_limit: int = 8
     n_iters: int = 10
-    # cum_reward: Callable[[list[float]], float] = sum
-    # calc_q: Callable[[list[float]], float] = np.mean
     simulate_strategy: str | Callable[[list[float]], int] = 'max'
-    # output_strategy: str = 'max_reward'
-    # uct_with_fast_reward: bool = True
-    # follow_probability_ratio: float = 0.0
     disable_tqdm: bool = True
     temperature: float = 0.0
     temperature_decay_ratio: float = 0.75
@@ -91,7 +85,8 @@ class MCTSNode(Generic[State, Action]):
     
     @property
     def p(self) -> float:
-        return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
+        # return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
+        return (self.log_probs.sum() / self.log_probs.size(-1) ** 1.25).exp().detach().item()  # PS: length_penalty = 1.25
 
 class MCTSResult(NamedTuple):
     tree_state: MCTSNode
@@ -165,7 +160,10 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         probs = _cal_probs(temperature)
         
         if return_selection:
-            selected_idx = np.random.choice(range(len(visit_counts)), p=probs)
+            if temperature == 0:
+                selected_idx = max(range(len(visit_counts)), key=lambda x: (visit_counts[x], next_action_Q[x], next_action_V[x]))
+            else:
+                selected_idx = np.random.choice(range(len(visit_counts)), p=probs)
             return probs, selected_idx, next_action_V, next_action_Q
         return probs, next_action_V, next_action_Q
     
@@ -256,7 +254,8 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         if self.output_trace_in_each_iter:
             self.trace_in_each_iter = []
 
-        for _ in trange(self.n_iters, disable=self.disable_tqdm, desc='MCTS iteration', leave=False):
+        n_iters = self.n_iters if self.root.depth else self.n_iters * 4     # iterate more at the starting point
+        for _ in trange(n_iters, disable=self.disable_tqdm, desc='MCTS iteration', leave=False):
             path = self.iterate(self.root)
             if self.output_trace_in_each_iter:
                 self.trace_in_each_iter.append(deepcopy(path))

@@ -54,7 +54,7 @@ class SQATrainDataset(MCQDataset):
 
 
 class CSRTrainDataset(MCQDataset):
-    NAME: str = 'CSQA/train'
+    NAME: str = 'CSR/train'
     DTYPE: str = 'csr'
     SPLIT: str = 'train'
 
@@ -66,6 +66,6 @@ class SQATestDataset(MCQDataset):
 
 
 class CSRTestDataset(MCQDataset):
-    NAME: str = 'CSQA/test'
+    NAME: str = 'CSR/test'
     DTYPE: str = 'csr'
     SPLIT: str = 'test'
