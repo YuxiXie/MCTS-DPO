@@ -1,0 +1,291 @@
+from time import time
+import itertools
+from tqdm import trange
+from copy import deepcopy
+from typing import Generic, Optional, NamedTuple, Callable, Union
+
+import math
+import torch
+import transformers
+import func_timeout
+import numpy as np
+from copy import deepcopy
+
+from mcts_rl.algorithms.mcts.mcts.base import State, Action, Example, Args, SearchAlgorithm, WorldModel, SearchConfig
+from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks
+
+
+class MCTSConfig(NamedTuple):
+    # step_wise: bool = True
+    output_trace_in_each_iter: bool = False
+    w_exp: float = 1.
+    depth_limit: int = 5
+    breadth_limit: int = 8
+    n_iters: int = 10
+    # cum_reward: Callable[[list[float]], float] = sum
+    # calc_q: Callable[[list[float]], float] = np.mean
+    simulate_strategy: str | Callable[[list[float]], int] = 'max'
+    # output_strategy: str = 'max_reward'
+    # uct_with_fast_reward: bool = True
+    # follow_probability_ratio: float = 0.0
+    disable_tqdm: bool = True
+    temperature: float = 0.0
+    temperature_decay_ratio: float = 0.75
+    gamma: float = 1.0
+    add_kl: bool = False
+
+
+class MCTSNode(Generic[State, Action]):
+    id_iter = itertools.count()
+
+    @classmethod
+    def reset_id(cls):
+        cls.id_iter = itertools.count()
+
+    def __init__(
+        self, 
+        state: Optional[State], 
+        action: Optional[Action], 
+        parent: "Optional[MCTSNode]" = None,
+        base_rewards: torch.Tensor = None, 
+        value: float = 0.0, 
+        embeddings: torch.Tensor = None, 
+        log_probs: torch.Tensor = None,
+        ref_log_probs: torch.Tensor = None,
+        is_terminal: bool = False,
+    ):
+        """
+        A node in the MCTS search tree
+
+        :param state: the current state
+        :param action: the action of the last step, i.e., the action from parent node to current node
+        :param parent: the parent node, None if root of the tree
+        TODO (base_reward; init_V; init_N)
+        :param embeddings: the embeddings of the current state
+        :param is_terminal: whether the current state is a terminal state
+        """
+        self.id = next(MCTSNode.id_iter)
+        self.is_terminal = is_terminal
+        self.action = action
+        self.embeddings = embeddings
+        self.state = state
+        self.parent = parent
+        self.children: 'Optional[list[MCTSNode]]' = None
+        self.depth = 0 if parent is None else parent.depth + 1
+        
+        self.rewards = base_rewards
+        self.log_probs = log_probs
+        self.ref_log_probs = ref_log_probs
+        self.value = value
+        
+        self.N = 0
+        self.V = 0.0
+        self.Q = self.parent.V + self.r if self.parent is not None else self.r
+
+    @property
+    def r(self) -> float:
+        if self.rewards is None:
+            return self.value if self.parent is None else (self.value - self.parent.value)
+        # return self.rewards.mean().detach().item() + (self.value if self.parent is None else (self.value - self.parent.value))
+        raise ValueError('Should not consider kl divergence here!')
+    
+    @property
+    def p(self) -> float:
+        return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
+
+class MCTSResult(NamedTuple):
+    tree_state: MCTSNode
+    next_action_pi: list[float]
+    next_action_V: list[float]
+    next_action_Q: list[float]
+    trace_in_each_iter: list[list[MCTSNode]] = None
+    next_action_idx: int = 0
+    trace_of_nodes: list[MCTSNode] = None
+    cum_reward: float = None
+
+
+class MCTS(SearchAlgorithm, Generic[State, Action]):
+    def __init__(self, args: MCTSConfig):
+        """
+        MCTS algorithm
+        """
+        super().__init__()
+        self.world_model = None
+        self.search_config = None
+        self.output_trace_in_each_iter = args.output_trace_in_each_iter
+        self.w_exp = args.w_exp
+        self.depth_limit = args.depth_limit
+        self.breadth_limit = args.breadth_limit
+        self.n_iters = args.n_iters
+        self.gamma = args.gamma
+        self.add_kl = args.add_kl
+        default_simulate_strategies: dict[str, Callable[[list[float]], int]] = {
+            'max': lambda x: np.argmax(x),
+            'sample': lambda x: np.random.choice(len(x), p=x),
+            'random': lambda x: np.random.choice(len(x)),
+        }
+        self.simulate_choice: Callable[[list[float]], int] = default_simulate_strategies.get(args.simulate_strategy,
+                                                                                             args.simulate_strategy)
+        self.temperature = args.temperature
+        self.temperature_decay_ratio = args.temperature_decay_ratio
+        self.follow_probability = False
+        self._output_iter: list[MCTSNode] = None
+        self._output_cum_reward = -math.inf
+        self.trace_in_each_iter: list[list[MCTSNode]] = None
+        self.root: Optional[MCTSNode] = None
+        self.disable_tqdm = args.disable_tqdm
+
+    def _get_simulated_pi(self, cur_node: MCTSNode, return_selection=False) -> list[float]:
+        """
+        Apated from: https://github.com/suragnair/alpha-zero-general/blob/ce020c8eebbabf0e22654279508a6887b4791015/MCTS.py#L28C5-L53C21
+        """
+        visit_counts = [child.N for child in cur_node.children]
+        next_action_V = [child.V for child in cur_node.children]
+        next_action_Q = [child.Q for child in cur_node.children]
+        
+        def _cal_probs(temp):
+            if temp > 0:
+                try:
+                    counts = [x ** (1. / temp) if x else x for x in visit_counts]
+                    total_count = float(sum(counts))
+                    probs = [x / total_count for x in counts]
+                    return probs
+                except OverflowError as e:
+                    print((
+                        'Run into {} -- '
+                        'Temperature too small ... Set to zero ...'
+                    ).format(str(e)))                
+            best_actions = np.array(np.argwhere(visit_counts == np.max(visit_counts))).flatten()
+            probs = [0] * len(visit_counts)
+            for best_action in best_actions:
+                probs[best_action] = 1 / len(best_actions)
+            return probs
+        
+        temperature = self.temperature * (self.temperature_decay_ratio ** cur_node.depth)
+        probs = _cal_probs(temperature)
+        
+        if return_selection:
+            selected_idx = np.random.choice(range(len(visit_counts)), p=probs)
+            return probs, selected_idx, next_action_V, next_action_Q
+        return probs, next_action_V, next_action_Q
+    
+    def iterate(self, node: MCTSNode) -> list[MCTSNode]:
+        node.N += 1
+        path = self._select(node)
+        while not self._is_terminal_with_depth_limit(path[-1]):
+            self._expand_and_evaluate(path[-1])
+            if path[-1].parent is not None:
+                self._back_propagate(path)
+            if self._is_terminal_with_depth_limit(path[-1]) or len(path[-1].children) == 0:
+                break
+            node = self._puct_select(path[-1])
+            path.append(node)
+        self._back_propagate(path)
+        return path
+
+    def _is_terminal_with_depth_limit(self, node: MCTSNode):
+        return node.is_terminal or (node.depth - self.root.depth) >= self.depth_limit
+
+    def _select(self, node: MCTSNode) -> list[MCTSNode]:
+        path = []
+        while True:
+            path.append(node)
+            if node.children is None or len(node.children) == 0 or self._is_terminal_with_depth_limit(node):
+                return path
+            node = self._puct_select(node)
+
+    def _puct(self, node: MCTSNode) -> float:
+        return node.Q + self.w_exp * node.p * np.sqrt(node.parent.N) / (1 + node.N)
+    
+    def _puct_select(self, node: MCTSNode) -> MCTSNode:
+        xnode = max(node.children, key=self._puct)
+        return xnode
+
+    def _expand_and_evaluate(self, node: MCTSNode):
+        if node.state is None:
+            node.state = self.world_model.step(node.parent.state, node.action, node.log_probs)
+            node.is_terminal = self.world_model.is_terminal(node.state)
+        
+        if node.is_terminal:
+            return
+        
+        actions = self.search_config.get_actions(self.policy_model, node.state, add_kl=self.add_kl)
+        
+        action_batch, log_probs_batch, ref_log_probs_batch = [], [], []
+        for action, (log_probs, ref_log_probs), _ in actions:
+            action_batch.append(action)
+            log_probs_batch.append(log_probs)
+            ref_log_probs_batch.append(ref_log_probs)
+        reward_value_batch = self.search_config.get_values(self.policy_model, node.state, action_batch, 
+                                                           log_probs_batch, ref_log_probs_batch, 
+                                                           add_kl=self.add_kl, parent_depth=node.depth)
+
+        children = []
+        for (action, (log_probs, ref_log_probs), embs), (value, base_rewards, is_terminal) in zip(actions, reward_value_batch):
+            child = MCTSNode(state=None, action=action, parent=node, 
+                             base_rewards=base_rewards, value=value, 
+                             embeddings=embs, log_probs=log_probs, ref_log_probs=ref_log_probs,
+                             is_terminal=is_terminal)
+            children.append(child)
+        node.children = children if node.children is None else node.children + children
+
+    def _simulate(self, path: list[MCTSNode]):
+        node = path[-1]
+        while True:
+            if node.state is None:
+                self._expand(node)
+            if self._is_terminal_with_depth_limit(node) or len(node.children) == 0:
+                return
+            fast_rewards = [child.fast_reward for child in node.children]
+            node = node.children[self.simulate_choice(fast_rewards)]
+            path.append(node)
+
+    def _back_propagate(self, path: list[MCTSNode]):
+        node = path[-1]
+        node.Q = node.r + self.gamma * node.V
+        node.N += 1
+        for node in reversed(path[:-1]):
+            node.V = sum(max(1, child.N) * child.Q for child in node.children) / sum(max(1, child.N) for child in node.children)
+            node.N += 1
+            if node.action is not None:
+                node.Q = node.r + self.gamma * node.V
+
+    def search(self):
+        if self.root is None:
+            self.root = MCTSNode(state=self.world_model.init_state(), action=None, parent=None)
+        if self.output_trace_in_each_iter:
+            self.trace_in_each_iter = []
+
+        for _ in trange(self.n_iters, disable=self.disable_tqdm, desc='MCTS iteration', leave=False):
+            path = self.iterate(self.root)
+            if self.output_trace_in_each_iter:
+                self.trace_in_each_iter.append(deepcopy(path))
+
+    def __call__(self,
+                 world_model: WorldModel[State, Action, Example],
+                 search_config: SearchConfig[State, Action, Example],
+                 root_node: Optional[Union[MCTSNode, int]] = None,
+                 **kwargs) -> MCTSResult:
+        if root_node is None:
+            MCTSNode.reset_id()
+            
+        self.root = root_node
+        self.world_model = world_model
+        self.search_config = search_config
+
+        self.search()
+        
+        if self.output_trace_in_each_iter:
+            trace_in_each_iter = self.trace_in_each_iter
+        else:
+            trace_in_each_iter = None
+        
+        next_action_pi, selected_idx, next_action_V, next_action_Q = self._get_simulated_pi(self.root, return_selection=True)
+        
+        return MCTSResult(tree_state=self.root,
+                          next_action_pi=next_action_pi,
+                          next_action_V=next_action_V,
+                          next_action_Q=next_action_Q,
+                          trace_in_each_iter=trace_in_each_iter,
+                          next_action_idx=selected_idx)
+
