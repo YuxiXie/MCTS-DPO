@@ -63,6 +63,7 @@ class MCTSTrainer(TSRLTrainer):
             base_tokenizer=self.tokenizer,
             generation_config=self.generation_config,
             n_actions=self.args.n_actions,
+            n_init_actions=self.args.n_init_actions,
             breadth_limit=self.args.breadth_limit,
             depth_limit=self.args.depth_limit,
             force_terminating_on_depth_limit=self.args.force_terminating_on_depth_limit,
@@ -199,7 +200,7 @@ class MCTSTrainer(TSRLTrainer):
                     is_correct = csr_equal(prediction, ('(' + solution[1].strip() + ')', ''))
                 else:
                     is_correct = math_equal(extract_answer(prediction), extract_answer(f'{solution[0]}\nThe answer is {solution[1]}'))
-        
+        # import ipdb; ipdb.set_trace()
         mini_batches['prediction'] = (r, is_correct,)
         return mini_batches
 
