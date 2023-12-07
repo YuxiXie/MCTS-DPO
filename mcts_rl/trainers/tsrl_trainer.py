@@ -550,7 +550,8 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         dist.barrier()
 
         self.set_train()
-        import ipdb; ipdb.set_trace()
+        # import ipdb; ipdb.set_trace()
+        assert False, """Cannot do eval & train in one process"""
         return {'num': len(generateds)}
 
     def save(

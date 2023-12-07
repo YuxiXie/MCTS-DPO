@@ -30,8 +30,9 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
-# ACTOR_MODEL_NAME_OR_PATH="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-noeval-math/steps768"
+# ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
+# ACTOR_MODEL_NAME_OR_PATH="/home/yuxi/Models/MCTS/sft-opt-2.7b"
+ACTOR_MODEL_NAME_OR_PATH="/home/yuxi/Models/MCTS/mcts-dpo-arithmo/vanilla-gsm/steps256"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/debug/eval"
@@ -125,15 +126,16 @@ export WANDB_MODE=dryrun
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
-MASTER_PORT=23760
+gpu_vis=6
+MASTER_PORT=2368
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets CSR60K/train \
-	--eval_datasets FeedbackQA/test \
+	--train_datasets GSM8K/train \
+	--eval_datasets GSM8K/test \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--temperature 1.0 \
 	--num_return_sequences 1 \
@@ -166,11 +168,8 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--tf32 True \
 	--force_terminating_on_depth_limit \
 	--max_new_tokens 64 \
+	--depth_limit 3 \
 	--n_iters 5 \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
-	--prediction_file_path /mnt/data/yuxi/hh-rlhf/pred/mcts/qa_feeback_vicuna.jsonl
-
-	# --prediction_file_path /mnt/data/yuxi/math/test-prm/debug/gsm8k-mistral-newprompt.jsonl
-	# --prediction_file_path /mnt/data/yuxi/math/test-prm/debug/gsm8k-mcts-noguide.jsonl
-	# --prediction_file_path /mnt/data/yuxi/math/test-prm/debug/gsm8k-arithmo.jsonl
+	--prediction_file_path /home/yuxi/Models/MCTS/predictions/math/gsm8k/vanilla-mcts-opt-2.7b-s256.jsonl

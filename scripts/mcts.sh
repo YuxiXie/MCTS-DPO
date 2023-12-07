@@ -30,12 +30,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
-ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-# ACTOR_MODEL_NAME_OR_PATH="/mnt/data/yuxi/safe-rlhf/sft-llama2-7b-bs256"
+# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+ACTOR_MODEL_NAME_OR_PATH="/home/yuxi/Models/MCTS/sft-opt-2.7b"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-mcq/sqa"
+OUTPUT_DIR="/home/yuxi/Models/MCTS/mcts-dpo-arithmo/gsm"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -126,13 +126,13 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
-MASTER_PORT=23456
+gpu_vis=7
+MASTER_PORT=3455
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets SQA/train \
+	--train_datasets GSM8K/train \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
@@ -162,15 +162,16 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.1 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-MCQ \
+	--log_project MCTS-DPO-ARITHMO \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--force_terminating_on_depth_limit \
 	--max_new_tokens 64 \
 	--n_iters 5 \
 	--depth_limit 3 \
+	--n_init_actions 4 \
+	--n_actions 2 \
 	--mcts_temperature 0.0
 
 # --per_device_eval_batch_size 1 \

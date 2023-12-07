@@ -298,6 +298,11 @@ def parse_arguments() -> argparse.Namespace:
         default=5,
     )
     mcts_parser.add_argument(
+        '--n_init_actions',
+        type=int,
+        default=2,
+    )
+    mcts_parser.add_argument(
         '--n_actions',
         type=int,
         default=2,

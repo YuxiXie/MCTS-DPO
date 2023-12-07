@@ -34,10 +34,11 @@ class SearchArgs(NamedTuple):
     base_tokenizer: PreTrainedTokenizerBase
     generation_config: GenerationConfig = None
     n_actions: int = 16
+    n_init_actions: int = 16
     reward_alpha: float = 0.5
     reward_confidence_default: float = 0.8
     depth_limit: int = 32
-    force_terminating_on_depth_limit: bool = True
+    force_terminating_on_depth_limit: bool = False
     breadth_limit: int = 16
     similarity_threshold: float = .9
     negative_gen: bool = False
@@ -52,6 +53,7 @@ class StepLMConfig(SearchConfig):
         self.example = None
         self.double_actions = False
         self.n_actions = args.n_actions
+        self.n_init_actions = args.n_init_actions
         self.force_terminating_on_depth_limit = args.force_terminating_on_depth_limit
         self.depth_limit = args.depth_limit
         self.reward_alpha = args.reward_alpha
@@ -114,7 +116,7 @@ class StepLMConfig(SearchConfig):
     @torch.no_grad()
     def get_actions(self, policy_model, state: StepLMState, add_kl: bool = False) -> list[StepLMAction]:
         at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 >= self.depth_limit
-        n_actions = 2 * self.n_actions if not len(state) else self.n_actions
+        n_actions = self.n_init_actions if not len(state) else self.n_actions
         n_actions = 1 if at_depth_limit else n_actions
         
         assert self.example['input_ids'].dim() == 1, "Input IDs should be a 1-dim sequence for a single example"

@@ -27,6 +27,7 @@ class MCTSConfig(NamedTuple):
     temperature_decay_ratio: float = 0.75
     gamma: float = 1.0
     add_kl: bool = False
+    consider_diversity: bool = True
 
 
 class MCTSNode(Generic[State, Action]):
@@ -88,6 +89,7 @@ class MCTSNode(Generic[State, Action]):
         # return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
         return (self.log_probs.sum() / self.log_probs.size(-1) ** 1.25).exp().detach().item()  # PS: length_penalty = 1.25
 
+
 class MCTSResult(NamedTuple):
     tree_state: MCTSNode
     next_action_pi: list[float]
@@ -129,6 +131,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         self.trace_in_each_iter: list[list[MCTSNode]] = None
         self.root: Optional[MCTSNode] = None
         self.disable_tqdm = args.disable_tqdm
+        self.consider_diversity= args.consider_diversity
 
     def _get_simulated_pi(self, cur_node: MCTSNode, return_selection=False) -> list[float]:
         """
@@ -137,11 +140,13 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         visit_counts = [child.N for child in cur_node.children]
         next_action_V = [child.V for child in cur_node.children]
         next_action_Q = [child.Q for child in cur_node.children]
+        next_action_n_children = [len(child.children) if child.children is not None else 0 for child in cur_node.children]
         
         def _cal_probs(temp):
             if temp > 0:
                 try:
-                    counts = [x ** (1. / temp) if x else x for x in visit_counts]
+                    counts = [(x * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
+                        for x, nc in zip(visit_counts, next_action_n_children)]
                     total_count = float(sum(counts))
                     probs = [x / total_count for x in counts]
                     return probs
@@ -149,7 +154,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
                     print((
                         'Run into {} -- '
                         'Temperature too small ... Set to zero ...'
-                    ).format(str(e)))                
+                    ).format(str(e)))
             best_actions = np.array(np.argwhere(visit_counts == np.max(visit_counts))).flatten()
             probs = [0] * len(visit_counts)
             for best_action in best_actions:
@@ -161,7 +166,10 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         
         if return_selection:
             if temperature == 0:
-                selected_idx = max(range(len(visit_counts)), key=lambda x: (visit_counts[x], next_action_Q[x], next_action_V[x]))
+                selected_idx = max(range(len(visit_counts)), key=lambda x: (
+                    visit_counts[x] * (next_action_n_children[x] + 1 if self.consider_diversity else 1), 
+                    next_action_Q[x], next_action_V[x]
+                ))
             else:
                 selected_idx = np.random.choice(range(len(visit_counts)), p=probs)
             return probs, selected_idx, next_action_V, next_action_Q
