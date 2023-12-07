@@ -251,7 +251,9 @@ class StepLMConfig(SearchConfig):
         input_ids, attention_mask = self._get_sequence_ids_in_path(state)
         prompt = self.base_tokenizer.decode(input_ids, skip_special_tokens=True)
         correct_token_ids = [self.base_tokenizer.encode(tok)[1] for tok in ['B', 'correct', 'Correct']]
-        correct_token_ids += [self.base_tokenizer.encode(tok)[-1] for tok in ['(B', ' B']]
+        correct_token_ids += [self.base_tokenizer.encode(tok)[-1] for tok in ['(B', ' B', ' correct']]
+        if len(self.base_tokenizer.encode('Correct')) < 3:
+            correct_token_ids += [self.base_tokenizer.encode(tok)[-1] for tok in ['Correct', ' Correct']]
         correct_token_ids = list(set(correct_token_ids))
         option_token_ids = {
             x: [self.base_tokenizer.encode(tok)[-1] for i, tok in enumerate([x, f'({x}'])]
