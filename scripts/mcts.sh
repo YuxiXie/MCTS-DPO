@@ -31,11 +31,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-ACTOR_MODEL_NAME_OR_PATH="/home/yuxi/Models/MCTS/sft-opt-2.7b"
+# ACTOR_MODEL_NAME_OR_PATH="facebook/opt-2.7b"
+ACTOR_MODEL_NAME_OR_PATH="/ssd1/yuxi/MCTS/sft/sft-opt-2.7b"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/yuxi/Models/MCTS/mcts-dpo-arithmo/gsm"
+OUTPUT_DIR="/ssd1/yuxi/MCTS/mcts-dpo-arithmo/gsm"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -126,8 +127,8 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=7
-MASTER_PORT=3455
+gpu_vis=1
+MASTER_PORT=3451
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
