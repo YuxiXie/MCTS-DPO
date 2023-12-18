@@ -32,11 +32,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="facebook/opt-2.7b"
-ACTOR_MODEL_NAME_OR_PATH="/ssd1/yuxi/MCTS/sft/sft-opt-2.7b"
-ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
+ACTOR_MODEL_NAME_OR_PATH="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-mcq/sqa/steps6912"
+# ACTOR_MODEL_NAME_OR_PATH="/ssd1/yuxi/MCTS/sft/sft-opt-2.7b"
+ACTOR_REF_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/ssd1/yuxi/MCTS/mcts-dpo-arithmo/gsm"
+OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/mcts/mcts-dpo-mcq/sqa-continue"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -127,16 +128,17 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
-MASTER_PORT=3451
+gpu_vis=2
+MASTER_PORT=3452
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets GSM8K/train \
+	--train_datasets SQA/train \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
+	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
 	--max_length 512 \
 	--temperature 1.0 \
@@ -163,7 +165,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.1 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-ARITHMO \
+	--log_project MCTS-DPO-MCQ \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
@@ -173,7 +175,8 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--depth_limit 3 \
 	--n_init_actions 4 \
 	--n_actions 2 \
-	--mcts_temperature 0.0
+	--mcts_temperature 0.0 \
+	--no_consider_diversity
 
 # --per_device_eval_batch_size 1 \
 # --need_eval \
