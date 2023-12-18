@@ -402,7 +402,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         """Train the model."""
         self.logger.print('***** Running training *****')
         
-        steps_trained_in_current_epoch = -1
+        steps_trained_in_current_epoch, epochs_trained = 0, 0
         if self.args.resume_from_ckpt is not None:
             if self.use_ptx:
                 steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
@@ -434,10 +434,9 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 self.prompt_only_dataloader,
                 itertools.chain.from_iterable([self.ptx_dataloader] * num_ptx_replicas),
             ):
-                if steps_trained_in_current_epoch >= 0:
+                if steps_trained_in_current_epoch > 0:
                     steps_trained_in_current_epoch -= 1
-                if steps_trained_in_current_epoch >= 0: continue
-                steps_trained_in_current_epoch = -1
+                    continue
                 
                 # generate batches
                 self.set_eval()
