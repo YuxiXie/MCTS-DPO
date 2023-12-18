@@ -365,6 +365,11 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help='The split ratio of the evaluation dataset.',
     )
+    evaluation_parser.add_argument(
+        '--no_consider_diversity',
+        default=False,
+        action='store_true',
+    )
 
     # Logging
     logging_parser = parser.add_argument_group('logging')

@@ -403,8 +403,12 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         self.logger.print('***** Running training *****')
         
         if self.args.resume_from_ckpt is not None:
-            steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps
-            self.prompt_only_dataloader = skip_first_batches(self.prompt_only_dataloader, steps_trained_in_current_epoch)
+            if self.use_ptx:
+                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
+            else:
+                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps
+            epochs_trained = steps_trained_in_current_epoch // len(self.prompt_only_dataloader)
+            steps_trained_in_current_epoch %= len(self.prompt_only_dataloader)
 
         progress_bar = tqdm(
             total=self.args.total_training_steps,
@@ -423,10 +427,15 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         num_ptx_replicas = (num_prompt_only_batches + num_ptx_batches - 1) // num_ptx_batches
         
         for epoch in range(self.args.epochs):
+            if epoch < epochs_trained: continue
+            
             for prompt_only_batch, ptx_batch in zip(
-                self.prompt_only_dataloader,
+                skip_first_batches(self.prompt_only_dataloader, steps_trained_in_current_epoch) \
+                    if steps_trained_in_current_epoch > 0 else self.prompt_only_dataloader,
                 itertools.chain.from_iterable([self.ptx_dataloader] * num_ptx_replicas),
-            ):                
+            ):
+                steps_trained_in_current_epoch = 0
+                
                 # generate batches
                 self.set_eval()
                 prompt_only_batch = to_device(prompt_only_batch, self.args.device)

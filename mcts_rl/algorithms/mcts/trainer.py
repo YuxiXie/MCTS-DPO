@@ -77,6 +77,7 @@ class MCTSTrainer(TSRLTrainer):
             n_iters=self.args.n_iters,
             temperature=self.args.mcts_temperature,
             temperature_decay_ratio=self.args.mcts_temperature_decay_ratio,
+            consider_diversity=(not self.args.no_consider_diversity),
         ))
         self.mcts_searcher = TreeConstructor(
             world_model=world_model, 
@@ -144,7 +145,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_gsm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_math.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
