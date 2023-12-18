@@ -402,6 +402,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         """Train the model."""
         self.logger.print('***** Running training *****')
         
+        steps_trained_in_current_epoch = -1
         if self.args.resume_from_ckpt is not None:
             if self.use_ptx:
                 steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
@@ -430,11 +431,13 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             if epoch < epochs_trained: continue
             
             for prompt_only_batch, ptx_batch in zip(
-                skip_first_batches(self.prompt_only_dataloader, steps_trained_in_current_epoch) \
-                    if steps_trained_in_current_epoch > 0 else self.prompt_only_dataloader,
+                self.prompt_only_dataloader,
                 itertools.chain.from_iterable([self.ptx_dataloader] * num_ptx_replicas),
             ):
-                steps_trained_in_current_epoch = 0
+                if steps_trained_in_current_epoch >= 0:
+                    steps_trained_in_current_epoch -= 1
+                if steps_trained_in_current_epoch >= 0: continue
+                steps_trained_in_current_epoch = -1
                 
                 # generate batches
                 self.set_eval()
@@ -521,6 +524,17 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             if '/mcts/' in outputfile:
                 rl_batch = self.split_tsrl_micro_batches(batch)[0]
                 torch.cuda.empty_cache()
+            elif self.args.num_return_sequences > 1:
+                with torch.no_grad():
+                    seq = self.actor_model.module.generate(
+                        input_ids=batch['input_ids'],
+                        attention_mask=batch['attention_mask'],
+                        max_length=self.args.max_length,
+                        synced_gpus=True,
+                        do_sample=True,
+                        num_return_sequences=self.args.num_return_sequences,
+                        temperature=self.args.temperature,
+                    )
             else:
                 with torch.no_grad():
                     seq = self.actor_model.module.generate(
@@ -529,8 +543,6 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         max_length=self.args.max_length,
                         synced_gpus=True,
                         do_sample=False,
-                        # do_sample=True,
-                        # num_return_sequences=self.args.num_return_sequences,
                     )
 
             dist.barrier()
