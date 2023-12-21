@@ -27,11 +27,11 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
-OUTPUT_DIR="${ROOT_DIR}/output/rm"
+MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/rm-sqa"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="none"
+OFFLOAD="optimizer"
 while [[ "$#" -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -107,10 +107,20 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
-deepspeed "${DEEPSPEED_ARGS[@]}" \
-	--module safe_rlhf.values.reward \
-	--train_datasets PKU-SafeRLHF/train \
-	--eval_datasets PKU-SafeRLHF/test \
+export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
+export WANDB_MODE=online
+
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=INIT,P2P
+
+gpu_vis=2,1
+MASTER_PORT=23692
+
+# deepspeed "${DEEPSPEED_ARGS[@]}" \
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.values.reward \
+	--train_datasets SQAPreference/train \
+	--eval_datasets SQAPreference/test \
 	--model_name_or_path "${MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--trust_remote_code True \
@@ -118,7 +128,7 @@ deepspeed "${DEEPSPEED_ARGS[@]}" \
 	--epochs 2 \
 	--per_device_train_batch_size 16 \
 	--per_device_eval_batch_size 16 \
-	--gradient_accumulation_steps 1 \
+	--gradient_accumulation_steps 4 \
 	--gradient_checkpointing \
 	--regularization 0.001 \
 	--normalize_score_during_training False \
@@ -133,7 +143,7 @@ deepspeed "${DEEPSPEED_ARGS[@]}" \
 	--eval_strategy epoch \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project Safe-RLHF-RM \
+	--log_project MCTS-DPO-RM \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \

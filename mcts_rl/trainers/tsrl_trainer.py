@@ -408,6 +408,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
             else:
                 steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps
+            self.global_step = steps_trained_in_current_epoch
             epochs_trained = steps_trained_in_current_epoch // len(self.prompt_only_dataloader)
             steps_trained_in_current_epoch %= len(self.prompt_only_dataloader)
 

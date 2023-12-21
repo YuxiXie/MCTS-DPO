@@ -60,6 +60,13 @@ from mcts_rl.datasets.raw.qa_feedback import (
     QAFBTestDataset,
     QAFBTrainDataset,
 )
+from mcts_rl.datasets.raw.mcq_pairs import (
+    MCQPreferenceDataset,
+    SQAPreferenceTestDataset,
+    SQAPreferenceTrainDataset,
+    CSRPreferenceTestDataset,
+    CSRPreferenceTrainDataset,
+)
 
 
 __all__ = [
@@ -94,4 +101,9 @@ __all__ = [
     'QAFBDataset',
     'QAFBTestDataset',
     'QAFBTrainDataset',
+    'MCQPreferenceDataset',
+    'SQAPreferenceTestDataset',
+    'SQAPreferenceTrainDataset',
+    'CSRPreferenceTestDataset',
+    'CSRPreferenceTrainDataset',
 ]
