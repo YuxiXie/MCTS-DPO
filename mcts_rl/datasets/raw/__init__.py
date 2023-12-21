@@ -66,6 +66,8 @@ from mcts_rl.datasets.raw.mcq_pairs import (
     SQAPreferenceTrainDataset,
     CSRPreferenceTestDataset,
     CSRPreferenceTrainDataset,
+    GSMPreferenceTrainDataset,
+    GSMPreferenceTestDataset,
 )
 
 
@@ -106,4 +108,6 @@ __all__ = [
     'SQAPreferenceTrainDataset',
     'CSRPreferenceTestDataset',
     'CSRPreferenceTrainDataset',
+    'GSMPreferenceTrainDataset',
+    'GSMPreferenceTestDataset',
 ]

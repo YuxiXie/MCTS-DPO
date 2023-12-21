@@ -74,3 +74,15 @@ class CSRPreferenceTestDataset(MCQPreferenceDataset):
     NAME: str = 'CSRPreference/test'
     DTYPE: str = 'csr'
     SPLIT: str = 'test'
+
+
+class GSMPreferenceTrainDataset(MCQPreferenceDataset):
+    NAME: str = 'GSMPreference/train'
+    DTYPE: str = 'gsm'
+    SPLIT: str = 'train'
+
+
+class GSMPreferenceTestDataset(MCQPreferenceDataset):
+    NAME: str = 'GSMPreference/test'
+    DTYPE: str = 'gsm'
+    SPLIT: str = 'test'
