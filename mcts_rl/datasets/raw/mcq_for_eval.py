@@ -21,68 +21,80 @@ from typing import ClassVar
 
 from datasets import load_dataset
 from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
+from mcts_rl.configs.constants import HINTED_EVAL_PROMPT
 
 
 __all__ = [
-    'MCQPreferenceDataset',
+    'MCQEvalDataset',
 ]
 
 DATA_DIR = "/mnt/data/yuxi/reward-model"
 
 
-class MCQPreferenceDataset(RawDataset):
+class MCQEvalDataset(RawDataset):
     SPLIT: ClassVar[str]
     DTYPE: ClassVar[str]
 
     def __init__(self, path: str | None = None) -> None:
-        self.data = jsonlines_load(os.path.join(DATA_DIR, f'{self.DTYPE}_pairs_{self.SPLIT}.jsonl'))
+        data = jsonlines_load(os.path.join(DATA_DIR, f'{self.DTYPE}_pairs_{self.SPLIT}.jsonl'))
+        self.data = []
+        for dt in data:
+            prompt = dt['prompt'].replace('QUESTION: ', '')
+            for i in range(2):
+                response = f'\n{dt[f"response_{i}"]}'
+                eval_prompt = HINTED_EVAL_PROMPT.format(
+                    input=f'{prompt}\n\n', 
+                    solution=f"The answer is ({dt['answer'][0]}) {dt['answer'][1]}", 
+                    prompt=response,
+                ).replace('\n\nANSWER: The answer is', '').strip()
+                
+                self.data.append({
+                    'question': eval_prompt,
+                    'answer': ' ' + ('B' if dt[f'is_response_{i}_correct'] else 'A'),
+                })
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
         return RawSample(
-            input=data['prompt'].replace('QUESTION: ', ''),
-            answer=f"\n{data['response_0']}",
-            other_answer=f"\n{data['response_1']}",
-            better=True,
-            is_safe=bool(data['is_response_0_correct']),
-            is_other_safe=bool(data['is_response_1_correct']),
+            input=data['question'],
+            final_answer=data['answer'],
         )
 
     def __len__(self) -> int:
         return len(self.data)
 
 
-class SQAPreferenceTrainDataset(MCQPreferenceDataset):
-    NAME: str = 'SQAPreference/train'
+class SQAEvalTrainDataset(MCQEvalDataset):
+    NAME: str = 'SQAEval/train'
     DTYPE: str = 'sqa_all'
     SPLIT: str = 'train'
 
 
-class SQAPreferenceTestDataset(MCQPreferenceDataset):
-    NAME: str = 'SQAPreference/test'
+class SQAEvalTestDataset(MCQEvalDataset):
+    NAME: str = 'SQAEval/test'
     DTYPE: str = 'sqa'
     SPLIT: str = 'train'
 
 
-class CSRPreferenceTrainDataset(MCQPreferenceDataset):
-    NAME: str = 'CSRPreference/train'
+class CSREvalTrainDataset(MCQEvalDataset):
+    NAME: str = 'CSREval/train'
     DTYPE: str = 'csr'
     SPLIT: str = 'train'
 
 
-class CSRPreferenceTestDataset(MCQPreferenceDataset):
-    NAME: str = 'CSRPreference/test'
+class CSREvalTestDataset(MCQEvalDataset):
+    NAME: str = 'CSREval/test'
     DTYPE: str = 'csr'
     SPLIT: str = 'test'
 
 
-class GSMPreferenceTrainDataset(MCQPreferenceDataset):
-    NAME: str = 'GSMPreference/train'
+class GSMEvalTrainDataset(MCQEvalDataset):
+    NAME: str = 'GSMEval/train'
     DTYPE: str = 'gsm'
     SPLIT: str = 'train'
 
 
-class GSMPreferenceTestDataset(MCQPreferenceDataset):
-    NAME: str = 'GSMPreference/test'
+class GSMEvalTestDataset(MCQEvalDataset):
+    NAME: str = 'GSMEval/test'
     DTYPE: str = 'gsm'
     SPLIT: str = 'test'

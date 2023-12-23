@@ -516,6 +516,13 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         if os.path.exists(outputfile):
             with jsonlines.open(outputfile, mode='r') as reader:
                 count = len([x for x in reader])
+        if '/scoring/' in outputfile:
+            correct_token_ids = [self.tokenizer.encode(tok)[1] for tok in ['B', 'correct', 'Correct']]
+            correct_token_ids += [self.tokenizer.encode(tok)[-1] for tok in ['(B', ' B', ' correct']]
+            if len(self.tokenizer.encode('Correct')) < 3:
+                correct_token_ids += [self.tokenizer.encode(tok)[-1] for tok in [' Correct']]
+            correct_token_ids = list(set(correct_token_ids))
+        
         idx = -1
         for batch in eval_dataloader:
             idx += 1
@@ -535,6 +542,33 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         num_return_sequences=self.args.num_return_sequences,
                         temperature=self.args.temperature,
                     )
+            elif '/scoring/' in outputfile:
+                with torch.no_grad():
+                    sequences = self.actor_model.module.generate(
+                        input_ids=batch['input_ids'],
+                        attention_mask=batch['attention_mask'],
+                        max_new_tokens=8,
+                        synced_gpus=True,
+                        do_sample=False,
+                        num_return_sequences=self.args.num_return_sequences,
+                        output_scores=True,
+                        return_dict_in_generate=True,
+                    )
+                    seq, scores = sequences.sequences, sequences.scores
+                    conf = 0.0
+                    for idx, _id in enumerate(seq[0]):
+                        if idx < batch['input_ids'].size(-1): continue
+                        if self.tokenizer.decode(_id).strip() in ['A', 'B', 'correct', 'wrong', 'incorrect']:
+                            logprobs = F.log_softmax(scores[idx - batch['input_ids'].size(-1)][0], dim=-1)
+                            conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
+                            break
+                    if conf == 0:
+                        for idx, _id in enumerate(seq[0]):
+                            if idx < batch['input_ids'].size(-1): continue
+                            if self.tokenizer.decode(_id).strip() in ['Cor', 'In', 'A', 'B', 'correct', 'wrong', 'incorrect']:
+                                logprobs = F.log_softmax(scores[idx - batch['input_ids'].size(-1)][0], dim=-1)
+                                conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
+                                break
             else:
                 with torch.no_grad():
                     seq = self.actor_model.module.generate(
@@ -566,6 +600,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                     'generated': generated,
                     'answer': batch['answer'][0],
                     'answer_content': batch['answer_content'][0],
+                    'score': conf if '/scoring/' in outputfile else -1,
                 }])
 
         dist.barrier()

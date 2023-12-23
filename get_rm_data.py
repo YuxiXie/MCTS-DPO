@@ -100,17 +100,19 @@ def ranked_predictions(fname):
                 break
             data.append({
                 'prompt': prompt,
+                'answer': (dt['answer'], dt['answer_content']),
                 'response_0': better[0],
                 'response_1': worse[0],
                 'is_response_0_correct': better[-1] == 1,
                 'is_response_1_correct': worse[-1] == 1,
             })
+            break
     return data
 
 if __name__ == '__main__':
     filepath = '/mnt/data/yuxi/mcts-rl/predictions/mcq/sqa/train-mistral-mj10-cot.jsonl'
     dump_jsonl(
         ranked_predictions(filepath),
-        '/mnt/data/yuxi/reward-model/sqa-pairs-all.jsonl',
+        '/mnt/data/yuxi/reward-model/sqa_pairs_train.jsonl',
     )
     

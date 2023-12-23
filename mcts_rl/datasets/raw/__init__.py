@@ -69,6 +69,15 @@ from mcts_rl.datasets.raw.mcq_pairs import (
     GSMPreferenceTrainDataset,
     GSMPreferenceTestDataset,
 )
+from mcts_rl.datasets.raw.mcq_for_eval import (
+    MCQEvalDataset,
+    SQAEvalTestDataset,
+    SQAEvalTrainDataset,
+    CSREvalTestDataset,
+    CSREvalTrainDataset,
+    GSMEvalTestDataset,
+    GSMEvalTrainDataset,
+)
 
 
 __all__ = [
@@ -110,4 +119,11 @@ __all__ = [
     'CSRPreferenceTrainDataset',
     'GSMPreferenceTrainDataset',
     'GSMPreferenceTestDataset',
+    'MCQEvalDataset',
+    'SQAEvalTestDataset',
+    'SQAEvalTrainDataset',
+    'CSREvalTestDataset',
+    'CSREvalTrainDataset',
+    'GSMEvalTestDataset',
+    'GSMEvalTrainDataset',
 ]
