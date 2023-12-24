@@ -44,6 +44,7 @@ class SearchArgs(NamedTuple):
     negative_gen: bool = False
     kl_coeff: float = 0.02
     disable_tqdm: bool = True
+    no_self_eval: bool = False
 
 
 class StepLMConfig(SearchConfig):
@@ -68,6 +69,8 @@ class StepLMConfig(SearchConfig):
         self.generation_config = args.generation_config        
         self.kl_coeff = args.kl_coeff
         self.disable_tqdm = args.disable_tqdm
+        
+        self.no_self_eval = args.no_self_eval
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -261,49 +264,54 @@ class StepLMConfig(SearchConfig):
         }
         
         @torch.no_grad()
-        def _eval(eval_prompt, generated, gt_ans, device):
-            eval_inputs = self.base_tokenizer(
-                eval_prompt,
-                add_special_tokens=True,
-                truncation=TruncationStrategy.LONGEST_FIRST,
-                return_tensors='pt',
-            )
-            sequences = policy_model.module.generate(
-                input_ids=eval_inputs['input_ids'].to(device),
-                attention_mask=eval_inputs['attention_mask'].to(device),
-                max_new_tokens=4,
-                do_sample=False,
-                output_scores=True,
-                synced_gpus=True,
-                return_dict_in_generate=True,
-                # eos_token_id=self.base_tokenizer.encode('\n')[-1],
-            )
-            
-            sequences, scores = sequences.sequences.cpu(), sequences.scores
-            seq = sequences[0][eval_inputs['input_ids'].size(-1):]
-            response = self.base_tokenizer.decode(seq, skip_special_tokens=True)
+        def _eval(eval_prompt, generated, gt_ans, device, self_eval=(not self.no_self_eval)):
+            if self_eval:
+                eval_inputs = self.base_tokenizer(
+                    eval_prompt,
+                    add_special_tokens=True,
+                    truncation=TruncationStrategy.LONGEST_FIRST,
+                    return_tensors='pt',
+                )
+                sequences = policy_model.module.generate(
+                    input_ids=eval_inputs['input_ids'].to(device),
+                    attention_mask=eval_inputs['attention_mask'].to(device),
+                    max_new_tokens=4,
+                    do_sample=False,
+                    output_scores=True,
+                    synced_gpus=True,
+                    return_dict_in_generate=True,
+                    # eos_token_id=self.base_tokenizer.encode('\n')[-1],
+                )
+                
+                sequences, scores = sequences.sequences.cpu(), sequences.scores
+                seq = sequences[0][eval_inputs['input_ids'].size(-1):]
+                response = self.base_tokenizer.decode(seq, skip_special_tokens=True)
+            else:
+                response = ''
             
             if gt_ans is None:
-                conf = 0.0
-                for idx, _id in enumerate(seq):
-                    if self.base_tokenizer.decode(_id).strip() in 'ABCD':
-                        logprobs = F.log_softmax(scores[idx][0], dim=-1)
-                        confs = {k: sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in v) for k, v in option_token_ids.items()}
-                        conf = 1.0 * confs['D'] + .0 * confs['C'] + (-1.0) * confs['B'] + (-2.0) * confs['A']
+                conf = 1.0
+                if self_eval:
+                    for idx, _id in enumerate(seq):
+                        if self.base_tokenizer.decode(_id).strip() in 'ABCD':
+                            logprobs = F.log_softmax(scores[idx][0], dim=-1)
+                            confs = {k: sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in v) for k, v in option_token_ids.items()}
+                            conf = 1.0 * confs['D'] + .0 * confs['C'] + (-1.0) * confs['B'] + (-2.0) * confs['A']
                 return response, conf, False
             
-            conf, correct_score = 0.0, 0.0
-            for idx, _id in enumerate(seq):
-                if self.base_tokenizer.decode(_id).strip() in ['A', 'B', 'correct', 'wrong', 'incorrect']:
-                    logprobs = F.log_softmax(scores[idx][0], dim=-1)
-                    conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
-                    break
-            if conf == 0:
+            conf, correct_score = 1.0, 0.0
+            if self_eval:
                 for idx, _id in enumerate(seq):
-                    if self.base_tokenizer.decode(_id).strip() in ['Cor', 'In', 'A', 'B', 'correct', 'wrong', 'incorrect']:
+                    if self.base_tokenizer.decode(_id).strip() in ['A', 'B', 'correct', 'wrong', 'incorrect']:
                         logprobs = F.log_softmax(scores[idx][0], dim=-1)
                         conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
                         break
+                if conf == 0:
+                    for idx, _id in enumerate(seq):
+                        if self.base_tokenizer.decode(_id).strip() in ['Cor', 'In', 'A', 'B', 'correct', 'wrong', 'incorrect']:
+                            logprobs = F.log_softmax(scores[idx][0], dim=-1)
+                            conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
+                            break
             
             if isinstance(gt_ans, str):
                 correct = math_equal(extract_answer(generated), gt_ans)

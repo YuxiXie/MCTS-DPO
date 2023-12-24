@@ -337,6 +337,11 @@ def parse_arguments() -> argparse.Namespace:
         type=float,
         default=1.,
     )
+    mcts_parser.add_argument(
+        '--no_self_eval',
+        action='store_true',
+        default=False,
+    )
 
     # Evaluation
     evaluation_parser = parser.add_argument_group('evaluation')

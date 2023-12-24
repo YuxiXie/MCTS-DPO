@@ -69,6 +69,7 @@ class MCTSTrainer(TSRLTrainer):
             force_terminating_on_depth_limit=self.args.force_terminating_on_depth_limit,
             kl_coeff=self.args.kl_coeff,
             disable_tqdm=False,
+            no_self_eval=self.args.no_self_eval,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -145,7 +146,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_math.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_gsm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
