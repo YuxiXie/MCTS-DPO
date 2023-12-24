@@ -537,6 +537,7 @@ class RLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                                 self.args.output_dir,
                                 tag=self.global_step,
                             )
+                            self.save(global_steps=self.global_step)
                             self.logger.print('Checkpoint saved.')
 
                         if (
@@ -553,6 +554,7 @@ class RLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 self.logger.print(
                     f'\n***** Evaluating at epoch {epoch + 1}/{self.args.epochs} *****',
                 )
+                self.save(global_steps=self.global_step)
                 self.logger.log(self.eval(), step=self.global_step)
 
     def eval(self) -> dict[str, Any]:
@@ -670,10 +672,11 @@ class RLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         self,
         model: deepspeed.DeepSpeedEngine | PreTrainedModel | None = None,
         ds_config: dict | None = None,
+        global_steps: int = -1,
     ) -> None:
         """Save model and tokenizer."""
         if model is None:
             model = self.actor_model
         if ds_config is None:
             ds_config = self.ds_train_config
-        super().save(model=model, ds_config=ds_config)
+        super().save(model=model, ds_config=ds_config, global_steps=global_steps)
