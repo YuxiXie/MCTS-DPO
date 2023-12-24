@@ -27,13 +27,13 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
-REWARD_MODEL_NAME_OR_PATH="${ROOT_DIR}/output/rm"
+ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+REWARD_MODEL_NAME_OR_PATH="/mnt/data/yuxi/mcts-rl/rm-sqa/steps1511"
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="${ROOT_DIR}/output/ppo"
+OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/ppo-sqa2"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="none"
+OFFLOAD="all"
 while [[ "$#" -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -127,10 +127,20 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
-deepspeed "${DEEPSPEED_ARGS[@]}" \
-	--module safe_rlhf.algorithms.ppo \
-	--train_datasets PKU-SafeRLHF/train \
-	--ptx_datasets alpaca \
+export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
+export WANDB_MODE=dryrun
+
+export NCCL_DEBUG=INFO
+export NCCL_DEBUG_SUBSYS=INIT,P2P
+
+gpu_vis=0
+MASTER_PORT=3450
+
+# deepspeed "${DEEPSPEED_ARGS[@]}" \
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.ppo \
+	--train_datasets SQA/train \
+	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--reward_model_name_or_path "${REWARD_MODEL_NAME_OR_PATH}" \
 	--reward_critic_model_name_or_path "${REWARD_CRITIC_MODEL_NAME_OR_PATH}" \
@@ -141,9 +151,10 @@ deepspeed "${DEEPSPEED_ARGS[@]}" \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
+	--save_interval 32 \
 	--per_device_prompt_batch_size 16 \
 	--per_device_train_batch_size 16 \
-	--gradient_accumulation_steps 1 \
+	--gradient_accumulation_steps 8 \
 	--actor_lr 1e-5 \
 	--actor_weight_decay 0.01 \
 	--actor_lr_scheduler_type cosine \
@@ -163,7 +174,7 @@ deepspeed "${DEEPSPEED_ARGS[@]}" \
 	--ptx_coeff 16.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project Safe-RLHF-PPO \
+	--log_project PPO-SQA \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
