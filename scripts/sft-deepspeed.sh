@@ -27,8 +27,9 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-MODEL_NAME_OR_PATH="facebook/opt-2.7b"
-OUTPUT_DIR="/home/yuxi/Models/MCTS/sft-opt-2.7b"
+# MODEL_NAME_OR_PATH="facebook/opt-2.7b"
+MODEL_NAME_OR_PATH="meta-llama/Llama-2-7b-hf"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -115,8 +116,8 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=4,5,6,7
-MASTER_PORT=33456
+gpu_vis=0,1,2,3
+MASTER_PORT=3345
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
@@ -127,9 +128,9 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--max_length 512 \
 	--trust_remote_code True \
 	--epochs 3 \
-	--per_device_train_batch_size 64 \
+	--per_device_train_batch_size 16 \
 	--per_device_eval_batch_size 16 \
-	--gradient_accumulation_steps 2 \
+	--gradient_accumulation_steps 4 \
 	--gradient_checkpointing \
 	--learning_rate 2e-5 \
 	--lr_scheduler_type cosine \
@@ -138,12 +139,11 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--seed 42 \
 	--need_eval \
 	--eval_strategy steps \
-	--eval_interval 500 \
+	--eval_interval 2500 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project SFT-ARITHMO \
+	--log_project SFT-MATH \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
-	--tf32 True \
-	--save_interval 1000
+	--tf32 True

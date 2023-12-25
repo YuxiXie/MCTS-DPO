@@ -28,7 +28,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, get_scheduler
-from transformers.deepspeed import HfDeepSpeedConfig
+from transformers.deepspeed import HfDeepSpeedConfig, deepspeed_load_checkpoint
 
 from mcts_rl.configs import ADAM_BETAS
 from mcts_rl.datasets import TokenizedDataset
@@ -163,6 +163,9 @@ class SupervisedTrainer(TrainerBase):
             lr_scheduler=lr_scheduler,
             dist_init_required=True,
         )
+        
+        if self.args.resume_from_ckpt is not None:
+            deepspeed_load_checkpoint(self.model, self.args.resume_from_ckpt)
 
         if self.args.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
@@ -180,6 +183,13 @@ class SupervisedTrainer(TrainerBase):
     def train(self) -> None:
         """Train the model."""
         self.logger.print('***** Running training *****')
+        
+        steps_trained_in_current_epoch, epochs_trained = 0, 0
+        if self.args.resume_from_ckpt is not None:
+            steps_trained_in_current_epoch = self.model.global_steps * self.args.gradient_accumulation_steps
+            self.global_step = steps_trained_in_current_epoch
+            epochs_trained = steps_trained_in_current_epoch // len(self.train_dataloader)
+            steps_trained_in_current_epoch %= len(self.train_dataloader)
 
         progress_bar = tqdm(
             total=self.args.epochs * len(self.train_dataloader),
@@ -194,9 +204,14 @@ class SupervisedTrainer(TrainerBase):
             self.logger.log(self.eval(), step=0)
 
         for epoch in range(self.args.epochs):
+            if epoch < epochs_trained: continue
             self.model.train()
 
             for batch in self.train_dataloader:
+                if steps_trained_in_current_epoch > 0:
+                    steps_trained_in_current_epoch -= 1
+                    continue
+                
                 info = self.train_step(**to_device(batch, self.args.device))
                 torch.cuda.empty_cache()
 
@@ -224,7 +239,7 @@ class SupervisedTrainer(TrainerBase):
                     self.logger.print(f'\n***** Evaluating at step {self.global_step} *****')
                     self.logger.log(self.eval(), step=self.global_step)
 
-            if self.args.need_eval and self.args.eval_strategy == 'epoch':
+            if self.args.need_eval: # self.args.eval_strategy == 'epoch':
                 self.logger.print(
                     f'\n***** Evaluating at epoch {epoch + 1}/{self.args.epochs} *****',
                 )

@@ -35,7 +35,7 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/yuxi/Models/MCTS/mcts-dpo-arithmo/math"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/num/lr1e7/mathqa-noptx"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -132,7 +132,7 @@ MASTER_PORT=23457
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets MATH/train \
+	--train_datasets MathQA/train \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
@@ -142,14 +142,14 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
-	--epochs 3 \
+	--epochs 2 \
 	--update_iters 1 \
 	--save_interval 256 \
 	--per_device_ptx_batch_size 8 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 1e-6 \
+	--actor_lr 1e-7 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
 	--actor_lr_warmup_ratio 0.03 \
@@ -159,10 +159,10 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--clip_range_ratio 0.2 \
 	--clip_range_score 50.0 \
 	--clip_range_value 5.0 \
-	--ptx_coeff 0.1 \
+	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-ARITHMO \
+	--log_project MCTS-DPO-NUM \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
@@ -171,9 +171,11 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--max_new_tokens 64 \
 	--n_iters 5 \
 	--depth_limit 3 \
-	--mcts_temperature 0.0 \
-	--no_consider_diversity
+	--n_init_actions 4 \
+	--n_actions 2 \
+	--mcts_temperature 0.0
 
+# --no_consider_diversity
 # --per_device_eval_batch_size 1 \
 # --need_eval \
 # --eval_datasets PRM800K/test \

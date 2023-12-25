@@ -79,6 +79,12 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--resume_from_ckpt',
+        type=str,
+        help='The directory to load optimizer and lr-scheduler.',
+        default=None,
+    )
+    training_parser.add_argument(
         '--epochs',
         type=int,
         default=1,

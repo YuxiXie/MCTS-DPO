@@ -311,6 +311,7 @@ class StepLMConfig(SearchConfig):
             if gt_ans is None:
                 conf = 1.0
                 if self_eval:
+                    conf = 0.0
                     for idx, _id in enumerate(seq):
                         if self.base_tokenizer.decode(_id).strip() in 'ABCD':
                             logprobs = F.log_softmax(scores[idx][0], dim=-1)
@@ -319,12 +320,13 @@ class StepLMConfig(SearchConfig):
                 return response, conf, False
             
             if self_eval and self.reward_model is None:
+                conf = 0.0
                 for idx, _id in enumerate(seq):
                     if self.base_tokenizer.decode(_id).strip() in ['A', 'B', 'correct', 'wrong', 'incorrect']:
                         logprobs = F.log_softmax(scores[idx][0], dim=-1)
                         conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
                         break
-                if conf == 1.0:
+                if conf == 0.0:
                     for idx, _id in enumerate(seq):
                         if self.base_tokenizer.decode(_id).strip() in ['Cor', 'In', 'A', 'B', 'correct', 'wrong', 'incorrect']:
                             logprobs = F.log_softmax(scores[idx][0], dim=-1)

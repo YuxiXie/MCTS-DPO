@@ -512,7 +512,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                             )
                             self.logger.log(self.eval(), step=self.global_step)
 
-            if self.args.need_eval and self.args.eval_strategy == 'epoch':
+            if self.args.need_eval: # and self.args.eval_strategy == 'epoch':
                 self.logger.print(
                     f'\n***** Evaluating at epoch {epoch + 1}/{self.args.epochs} *****',
                 )

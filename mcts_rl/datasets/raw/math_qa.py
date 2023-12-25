@@ -40,7 +40,7 @@ class MathQADataset(RawDataset):
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
-        prompt = data['question']
+        prompt = data['question'] if 'question' in data else data['problem']
         return RawSample(
             input=prompt,
             answer=data['solution'],
