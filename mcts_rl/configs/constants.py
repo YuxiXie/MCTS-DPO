@@ -39,6 +39,7 @@ __all__ = [
     'HINTED_EVAL_PROMPT',
     'HINTED_EVAL_PROMPT_I',
     'EVAL_PROMPT',
+    'GSM8K_EXP',
     'GSM8K_PROMPT',
     'MATH_PROMPT',
     'SAFE_EVAL_PROMPT',
@@ -64,9 +65,9 @@ PROMPT_USER: str = 'QUESTION: {input}\n\n'
 # PROMPT_USER: str = '[INST] {input} [/INST]'
 
 # PROMPT_ASSISTANT: str = 'ASSISTANT:'  # should not have a space at the end
-PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step.'
+# PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step.'
 # PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
-# PROMPT_ASSISTANT: str = 'ANSWER:'
+PROMPT_ASSISTANT: str = 'ANSWER:'
 # PROMPT_ASSISTANT: str = '\nASSISTANT:'
 # PROMPT_ASSISTANT: str = 'Let\'s think step by step.'
 # PROMPT_ASSISTANT: str = 'ANSWER: The answer is'
@@ -231,9 +232,9 @@ GSM8K_EXP = [
 ]
 
 GSM8K_PROMPT = '\n\n'.join([
-    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A']
+    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN
     for exp in GSM8K_EXP
-])
+]) + '\n\n'
 
 MATH_EXP = [
     {

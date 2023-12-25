@@ -22,7 +22,13 @@ import torch
 from torch.nn.utils.rnn import pad_sequence
 from torch.types import Number
 
-from mcts_rl.configs import PROMPT_ASSISTANT, PROMPT_BEGIN, PROMPT_USER, COT_INSTRUCTIONS, MATH_PROMPT, GSM8K_PROMPT
+from mcts_rl.configs import (
+    DEFAULT_EOS_TOKEN,
+    PROMPT_ASSISTANT, PROMPT_BEGIN, PROMPT_USER, 
+    COT_INSTRUCTIONS, 
+    MATH_PROMPT, 
+    GSM8K_PROMPT, GSM8K_EXP,
+)
 
 
 def format_prompt(
@@ -42,6 +48,9 @@ def format_prompt(
     if 'USER:' in PROMPT_USER:
         buffer = [PROMPT_BEGIN]
     else:
+        # exp = random.choice(GSM8K_EXP)
+        # buffer = [PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN + '\n\n']
+        # buffer = ['At the end of your answer output #### {final answer}.\n\n']
         buffer = []
     
     for i, line in enumerate(input):
