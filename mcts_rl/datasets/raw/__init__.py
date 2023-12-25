@@ -78,6 +78,11 @@ from mcts_rl.datasets.raw.mcq_for_eval import (
     GSMEvalTestDataset,
     GSMEvalTrainDataset,
 )
+from mcts_rl.datasets.raw.math_qa import (
+    MathQADataset,
+    MathQATestDataset,
+    MathQATrainDataset,
+)
 
 
 __all__ = [
@@ -126,4 +131,7 @@ __all__ = [
     'CSREvalTrainDataset',
     'GSMEvalTestDataset',
     'GSMEvalTrainDataset',
+    'MathQADataset',
+    'MathQATestDataset',
+    'MathQATrainDataset',
 ]
