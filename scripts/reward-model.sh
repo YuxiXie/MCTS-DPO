@@ -113,7 +113,7 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=2,1
+gpu_vis=0
 MASTER_PORT=23692
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
@@ -128,7 +128,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--epochs 2 \
 	--per_device_train_batch_size 16 \
 	--per_device_eval_batch_size 16 \
-	--gradient_accumulation_steps 4 \
+	--gradient_accumulation_steps 8 \
 	--gradient_checkpointing \
 	--regularization 0.001 \
 	--normalize_score_during_training False \

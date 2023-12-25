@@ -153,6 +153,22 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             auto_model_type=AutoModelForCausalLM,
             trust_remote_code=self.args.trust_remote_code,
         )
+        
+        self.use_reward_model = False
+        if self.args.reward_model_name_or_path:
+            self.use_reward_model = True
+            self.reward_model, self.reward_tokenizer = load_pretrained_models(
+                self.args.reward_model_name_or_path,
+                model_max_length=self.args.max_length,
+                auto_model_type=AutoModelForScore,
+                padding_side='right',
+                trust_remote_code=self.args.trust_remote_code,
+                auto_model_kwargs={
+                    'score_type': 'reward',
+                    'do_normalize': self.args.normalize_reward,
+                },
+            )
+            self.reward_model.set_normalize(self.args.normalize_reward)
 
     def init_datasets(self) -> None:
         """Initialize training and evaluation datasets."""
@@ -313,6 +329,13 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             ds_config=self.ds_eval_config,
         )
         self.actor_reference_model.eval()
+        
+        if self.use_reward_model:
+            self.reward_model = self._init_eval_engine(
+                model=self.reward_model,
+                ds_config=self.ds_eval_config,
+            )
+            self.reward_model.eval()
 
     @abc.abstractmethod
     def init_mcts_searcher(self) -> None:

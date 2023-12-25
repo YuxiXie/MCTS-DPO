@@ -44,6 +44,7 @@ __all__ = [
     'SAFE_EVAL_PROMPT',
     'HH_EVAL_PROMPT',
     'QA_EVAL_PROMPT',
+    'REWARD_EVAL_PROMPT',
 ]
 
 
@@ -63,12 +64,12 @@ PROMPT_USER: str = 'QUESTION: {input}\n\n'
 # PROMPT_USER: str = '[INST] {input} [/INST]'
 
 # PROMPT_ASSISTANT: str = 'ASSISTANT:'  # should not have a space at the end
-# PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step.'
+PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step.'
 # PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
 # PROMPT_ASSISTANT: str = 'ANSWER:'
 # PROMPT_ASSISTANT: str = '\nASSISTANT:'
 # PROMPT_ASSISTANT: str = 'Let\'s think step by step.'
-PROMPT_ASSISTANT: str = 'ANSWER: The answer is'
+# PROMPT_ASSISTANT: str = 'ANSWER: The answer is'
 
 EVAL_PROMPT_USER: str = 'QUESTION: {input}\n'
 EVAL_PROMPT_ASSISTANT: str = 'ANSWER:'
@@ -120,6 +121,9 @@ COT_INSTRUCTIONS = [
 
 HINTED_PROMPT = '{prompt} {solution}' + DEFAULT_EOS_TOKEN + '\n\nQUESTION: {input}\n\nANSWER:'
 
+REWARD_EVAL_PROMPT = '''
+{input}ANSWER:{prompt}{eos_token}
+'''
 
 HINTED_EVAL_PROMPT = '''
 {input}EXAMPLE ANSWER: {solution}

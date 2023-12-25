@@ -69,6 +69,12 @@ def parse_arguments() -> argparse.Namespace:
         default=False,
         help='Whether to trust the remote code.',
     )
+    model_parser.add_argument(
+        '--reward_model_name_or_path',
+        type=str,
+        help='Path to the model checkpoint or its name.',
+        default='',
+    )
 
     # Dataset
     dataset_parser = parser.add_argument_group('dataset')
@@ -229,6 +235,12 @@ def parse_arguments() -> argparse.Namespace:
         '--actor_gradient_checkpointing',
         action='store_true',
         help='Enable gradient checkpointing for actor model.',
+    )
+    training_parser.add_argument(
+        '--normalize_reward',
+        type=str2bool,
+        default=False,
+        help='Whether to normalize the reward during RL training.',
     )
     training_parser.add_argument(
         '--seed',

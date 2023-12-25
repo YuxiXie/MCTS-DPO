@@ -70,6 +70,8 @@ class MCTSTrainer(TSRLTrainer):
             kl_coeff=self.args.kl_coeff,
             disable_tqdm=False,
             no_self_eval=self.args.no_self_eval,
+            reward_model=self.reward_model if self.use_reward_model else None,
+            reward_tokenizer=self.reward_tokenizer if self.use_reward_model else None,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -146,7 +148,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_gsm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_sqa-rm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
