@@ -133,7 +133,7 @@ class StepLMConfig(SearchConfig):
         unique_text_list, sequences_list = [], []
         prompt = self.base_tokenizer.decode(input_ids, skip_special_tokens=True)
         for _ in trange(n_actions, disable=self.disable_tqdm, desc='Expand: action generation', leave=False):
-            if unique_text_list or prompt.startswith(PROMPT_BEGIN):
+            if True or unique_text_list or prompt.startswith(PROMPT_BEGIN):
                 sequences = policy_model.module.generate(
                     input_ids=input_ids.unsqueeze(0),
                     attention_mask=attention_mask.unsqueeze(0),
@@ -309,7 +309,6 @@ class StepLMConfig(SearchConfig):
                 response = ''
             
             if gt_ans is None:
-                conf = 1.0
                 if self_eval:
                     conf = 0.0
                     for idx, _id in enumerate(seq):

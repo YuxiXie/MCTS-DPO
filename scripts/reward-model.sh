@@ -27,8 +27,8 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-OUTPUT_DIR="/mnt/data/yuxi/mcts-rl/rm-sqa"
+MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/rm/csr/steps3534"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/rm/csr/eval"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -113,14 +113,14 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=0
-MASTER_PORT=23692
+gpu_vis=0,1
+MASTER_PORT=23610
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.values.reward \
-	--train_datasets SQAPreference/train \
-	--eval_datasets SQAPreference/test \
+	--train_datasets CSRPreference/train \
+	--eval_datasets CSRPreference/test \
 	--model_name_or_path "${MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--trust_remote_code True \
@@ -128,7 +128,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--epochs 2 \
 	--per_device_train_batch_size 16 \
 	--per_device_eval_batch_size 16 \
-	--gradient_accumulation_steps 8 \
+	--gradient_accumulation_steps 4 \
 	--gradient_checkpointing \
 	--regularization 0.001 \
 	--normalize_score_during_training False \

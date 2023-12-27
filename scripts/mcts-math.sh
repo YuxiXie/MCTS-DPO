@@ -30,12 +30,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
-ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-# ACTOR_MODEL_NAME_OR_PATH="/mnt/data/yuxi/safe-rlhf/sft-llama2-7b-bs256"
-ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
+# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
+ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/num/lr1e7/mathqa-noptx"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/math-diymistral"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -127,12 +127,12 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0
-MASTER_PORT=23457
+MASTER_PORT=23450
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets MathQA/train \
+	--train_datasets MATH/train \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
@@ -144,7 +144,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--trust_remote_code True \
 	--epochs 2 \
 	--update_iters 1 \
-	--save_interval 256 \
+	--save_interval 512 \
 	--per_device_ptx_batch_size 8 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
@@ -168,13 +168,14 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--bf16 True \
 	--tf32 True \
 	--force_terminating_on_depth_limit \
-	--max_new_tokens 64 \
+	--max_new_tokens 100 \
 	--n_iters 5 \
 	--depth_limit 3 \
 	--n_init_actions 4 \
 	--n_actions 2 \
 	--mcts_temperature 0.0
 
+# --no_self_eval
 # --no_consider_diversity
 # --per_device_eval_batch_size 1 \
 # --need_eval \

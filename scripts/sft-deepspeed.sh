@@ -28,7 +28,8 @@ export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
 # MODEL_NAME_OR_PATH="facebook/opt-2.7b"
-MODEL_NAME_OR_PATH="meta-llama/Llama-2-7b-hf"
+# MODEL_NAME_OR_PATH="meta-llama/Llama-2-7b-hf"
+MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps8403"
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo"
 unset HOSTFILE
 ZERO_STAGE=3
@@ -125,6 +126,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--train_datasets Arithmo/train \
 	--eval_datasets Arithmo/test \
 	--model_name_or_path "${MODEL_NAME_OR_PATH}" \
+	--resume_from_ckpt "${MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--trust_remote_code True \
 	--epochs 3 \
