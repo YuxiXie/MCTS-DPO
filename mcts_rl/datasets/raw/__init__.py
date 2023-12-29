@@ -83,6 +83,11 @@ from mcts_rl.datasets.raw.math_qa import (
     MathQATestDataset,
     MathQATrainDataset,
 )
+from mcts_rl.datasets.raw.arithmo_mcq import (
+    ArithmoMCQDataset,
+    ArithmoMCQTestDataset,
+    ArithmoMCQTrainDataset,
+)
 
 
 __all__ = [
@@ -134,4 +139,7 @@ __all__ = [
     'MathQADataset',
     'MathQATestDataset',
     'MathQATrainDataset',
+    'ArithmoMCQDataset',
+    'ArithmoMCQTestDataset',
+    'ArithmoMCQTrainDataset',
 ]

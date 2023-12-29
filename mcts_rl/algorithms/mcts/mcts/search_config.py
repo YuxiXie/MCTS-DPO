@@ -170,7 +170,7 @@ class StepLMConfig(SearchConfig):
                 sents = []
                 for sid, sent in enumerate(sentences):
                     sents.append(sent)
-                    if len(' '.join(sents).strip()) and sid >= len(sentences) - 2:
+                    if len(' '.join(sents).strip()) and sid >= len(sentences) - 2 and self.n_actions > 1:
                         break
                 step = ' '.join(sents)
                 
