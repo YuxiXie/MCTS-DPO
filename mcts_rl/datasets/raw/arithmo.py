@@ -26,15 +26,19 @@ __all__ = [
     'ArithmoDataset',
     'ArithmoTrainDataset',
     'ArithmoTestDataset',
+    'ArithmoMATHTrainDataset',
 ]
 
 
 class ArithmoDataset(RawDataset):
     SPLIT: ClassVar[str]
     PATH: ClassVar[str]
+    TYPE: ClassVar[str]
 
     def __init__(self, path: str | None = None) -> None:
         self.data = load_dataset(path or self.PATH, split=self.SPLIT)
+        if self.TYPE == 'math':
+            self.data = [dt for dt in self.data if ' answer is' in dt['answer']]
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -52,6 +56,7 @@ class ArithmoTrainDataset(ArithmoDataset):
     ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train',)
     PATH: str = 'akjindal53244/Arithmo-Data'
     SPLIT: str = 'train'
+    TYPE: str = 'all'
 
 
 class ArithmoTestDataset(ArithmoDataset):
@@ -59,3 +64,12 @@ class ArithmoTestDataset(ArithmoDataset):
     ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/test',)
     PATH: str = 'akjindal53244/Arithmo-Data'
     SPLIT: str = 'test'
+    TYPE: str = 'all'
+
+
+class ArithmoMATHTrainDataset(ArithmoDataset):
+    NAME: str = 'ArithmoMATH/train'
+    ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train',)
+    PATH: str = 'akjindal53244/Arithmo-Data'
+    SPLIT: str = 'train'
+    TYPE: str = 'math'

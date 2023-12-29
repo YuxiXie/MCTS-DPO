@@ -30,12 +30,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
-# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
-ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
+ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
+ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-diymistral"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-mistral"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -127,13 +127,12 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0
-MASTER_PORT=23450
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets MathQA/train \
-	--ptx_datasets Arithmo/train \
+	--ptx_datasets ArithmoMATH/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
@@ -142,13 +141,13 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
-	--epochs 2 \
+	--epochs 1 \
 	--update_iters 1 \
 	--save_interval 512 \
 	--per_device_ptx_batch_size 8 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
-	--gradient_accumulation_steps 32 \
+	--gradient_accumulation_steps 64 \
 	--actor_lr 1e-7 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
@@ -159,7 +158,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--clip_range_ratio 0.2 \
 	--clip_range_score 50.0 \
 	--clip_range_value 5.0 \
-	--ptx_coeff 0.0 \
+	--ptx_coeff 0.1 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
 	--log_project MCTS-DPO-NUM \
@@ -167,14 +166,14 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--force_terminating_on_depth_limit \
-	--max_new_tokens 100 \
+	--max_new_tokens 64 \
 	--n_iters 5 \
 	--depth_limit 3 \
 	--n_init_actions 4 \
 	--n_actions 2 \
 	--mcts_temperature 0.0
 
+# --force_terminating_on_depth_limit \
 # --no_self_eval
 # --no_consider_diversity
 # --per_device_eval_batch_size 1 \

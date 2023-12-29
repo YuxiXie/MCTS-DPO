@@ -449,7 +449,9 @@ ANSWER_INDICATOR = ' answer is'
 def extract_answer(pred_str):
     if 'USER:' in pred_str:
         pred_str = pred_str.split('USER:')[0]
-    if 'boxed' in pred_str:
+    if (ANSWER_INDICATOR in pred_str):
+        pred = pred_str.split(ANSWER_INDICATOR)[-1].strip()
+    elif 'boxed' in pred_str:
         ans = pred_str.split('boxed')[-1]
         if len(ans) == 0:
             return ""
@@ -469,8 +471,6 @@ def extract_answer(pred_str):
         else:
             a = ans.split('$')[0].strip()
         pred=a
-    elif (ANSWER_INDICATOR in pred_str):
-        pred = pred_str.split(ANSWER_INDICATOR)[-1].strip()
     else: # use the last number
         pattern = '-?\d*\.?\d+'
         pred = re.findall(pattern, pred_str.replace(",", ""))
@@ -664,3 +664,35 @@ def csr_equal(prediction, reference):
         # Only provide textual answer
         return 0
     return -1
+
+
+def get_choice_content(choice, question):
+    xsplit = 'Answer Choices:'
+    if 'answer choices:' in question:
+        xsplit = 'answer choices:'
+    elif 'Answer choices:' in question:
+        xsplit = 'Answer choices:'
+    choices = question.split(xsplit)[-1].strip()[1:].split(' (')
+    for option in choices:
+        o, c = option.split(')')[0], ')'.join(option.split(')')[1:])
+        if o.strip().lower() == choice.strip().lower():
+            return c.strip()
+
+
+def get_math_data(rawdata):
+    outdata = []
+    for dt in rawdata:
+        question, answer = dt['question'], dt['answer']
+        if 'The answer is' in answer:
+            final_answer = extract_answer(answer)
+            if regex.match(r'\b[A-Za-z]\b', final_answer):
+                if 'answer choices:' not in question.lower(): continue
+            if 'answer choices:' in question.lower():
+                if not regex.match(r'\b[A-Za-z]\b', final_answer): continue
+            if answer.lower().startswith('the answer is'): continue
+            outdata.append({
+                'question': question, 'solution': answer,
+                'answer': final_answer,
+                'answer_content': get_choice_content(final_answer, question) if regex.match(r'\b[A-Za-z]\b', final_answer) else final_answer,
+            })
+    return outdata

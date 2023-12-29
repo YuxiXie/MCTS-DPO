@@ -19,6 +19,8 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
+from datasets import load_dataset
+from mcts_rl.utils import get_math_data
 from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
 
 
@@ -35,8 +37,10 @@ class MathQADataset(RawDataset):
     SPLIT: ClassVar[str]
 
     def __init__(self) -> None:
-        self.data = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl')) \
-            + jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl')) \
+        gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
+        math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
+        arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
+        self.data = gsm8k + math + arithmo
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -45,7 +49,7 @@ class MathQADataset(RawDataset):
             input=prompt,
             answer=data['solution'],
             final_answer=data.get('answer', None),
-            final_answer_content=data.get('answer', None),
+            final_answer_content=data.get('answer_content', data.get('answer', None)),
         )
 
     def __len__(self) -> int:
