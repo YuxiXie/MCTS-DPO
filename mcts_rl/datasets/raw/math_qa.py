@@ -20,7 +20,7 @@ import os
 from typing import ClassVar
 
 from datasets import load_dataset
-from mcts_rl.utils import get_math_data
+from mcts_rl.utils import random, get_math_data
 from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
 
 
@@ -40,7 +40,7 @@ class MathQADataset(RawDataset):
         gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
         math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
         arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
-        self.data = gsm8k + math + arithmo
+        self.data = gsm8k + math + list(random.sample(arithmo, len(gsm8k + math) * 2))
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]

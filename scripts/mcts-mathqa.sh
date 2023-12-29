@@ -35,7 +35,7 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-mistral"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-mistral-5-4x2"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -168,7 +168,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--tf32 True \
 	--max_new_tokens 64 \
 	--n_iters 5 \
-	--depth_limit 3 \
+	--depth_limit 5 \
 	--n_init_actions 4 \
 	--n_actions 2 \
 	--mcts_temperature 0.0
