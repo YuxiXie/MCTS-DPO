@@ -360,7 +360,8 @@ class StepLMConfig(SearchConfig):
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, None, action.device)
             else:
                 if self.example['reasoning'] and self.example['reasoning'] != self.example['answer_content']:
-                    solution = f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
+                    solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
+                        else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
                     gt_ans = self.example["answer"]
                 else:
                     gt_ans = [f"({self.example['answer']})", self.example['answer_content']] \
