@@ -69,7 +69,7 @@ class ArithmoTestDataset(ArithmoDataset):
 
 class ArithmoMATHTrainDataset(ArithmoDataset):
     NAME: str = 'ArithmoMATH/train'
-    ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train',)
+    ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train/mathqa',)
     PATH: str = 'akjindal53244/Arithmo-Data'
     SPLIT: str = 'train'
     TYPE: str = 'math'
