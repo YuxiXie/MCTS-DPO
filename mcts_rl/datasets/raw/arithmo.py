@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import regex
 from typing import ClassVar
 
 from datasets import load_dataset
@@ -28,6 +29,7 @@ __all__ = [
     'ArithmoTestDataset',
     'ArithmoMATHTrainDataset',
     'ArithmoMCQTrainDataset',
+    'ArithmoCodeTrainDataset',
 ]
 
 
@@ -45,6 +47,8 @@ class ArithmoDataset(RawDataset):
                 dt for dt in self.data if ' answer is' in dt['answer'] and not dt['answer'].startswith('The answer is') \
                     and 'answer choices' in dt['question'].lower()
             ]
+        elif self.TYPE == 'code':
+            self.data = [dt for dt in self.data if regex.search(r'print\(.+\)', dt['answer'])]
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -80,9 +84,18 @@ class ArithmoMATHTrainDataset(ArithmoDataset):
     SPLIT: str = 'train'
     TYPE: str = 'math'
 
+
 class ArithmoMCQTrainDataset(ArithmoDataset):
     NAME: str = 'ArithmoMCQ/train'
     ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train/mcq',)
     PATH: str = 'akjindal53244/Arithmo-Data'
     SPLIT: str = 'train'
     TYPE: str = 'mcq'
+
+
+class ArithmoCodeTrainDataset(ArithmoDataset):
+    NAME: str = 'ArithmoCode/train'
+    ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train/code',)
+    PATH: str = 'akjindal53244/Arithmo-Data'
+    SPLIT: str = 'train'
+    TYPE: str = 'code'

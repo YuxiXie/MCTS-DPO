@@ -49,6 +49,8 @@ from mcts_rl.datasets.raw.gsm8k import (
     GSM8KDataset,
     GSM8KTestDataset,
     GSM8KTrainDataset,
+    GSM8KPoTTestDataset,
+    GSM8KPoTTrainDataset,
 )
 from mcts_rl.datasets.raw.arithmo import (
     ArithmoDataset,
@@ -56,6 +58,7 @@ from mcts_rl.datasets.raw.arithmo import (
     ArithmoTrainDataset,
     ArithmoMATHTrainDataset,
     ArithmoMCQTrainDataset,
+    ArithmoCodeTrainDataset,
 )
 from mcts_rl.datasets.raw.qa_feedback import (
     QAFBDataset,
@@ -84,6 +87,8 @@ from mcts_rl.datasets.raw.math_qa import (
     MathQADataset,
     MathQATestDataset,
     MathQATrainDataset,
+    MathQACodeTestDataset,
+    MathQACodeTrainDataset,
 )
 
 
@@ -113,10 +118,14 @@ __all__ = [
     'GSM8KDataset',
     'GSM8KTestDataset',
     'GSM8KTrainDataset',
+    'GSM8KPoTTestDataset',
+    'GSM8KPoTTrainDataset',
     'ArithmoDataset',
     'ArithmoTestDataset',
     'ArithmoTrainDataset',
     'ArithmoMATHTrainDataset',
+    'ArithmoMCQTrainDataset',
+    'ArithmoCodeTrainDataset',
     'QAFBDataset',
     'QAFBTestDataset',
     'QAFBTrainDataset',
@@ -137,5 +146,6 @@ __all__ = [
     'MathQADataset',
     'MathQATestDataset',
     'MathQATrainDataset',
-    'ArithmoMCQTrainDataset',
+    'MathQACodeTestDataset',
+    'MathQACodeTrainDataset',
 ]

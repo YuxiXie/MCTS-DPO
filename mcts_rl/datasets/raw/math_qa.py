@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import os
+import regex
 from typing import ClassVar
 
 from datasets import load_dataset
@@ -28,19 +29,29 @@ __all__ = [
     'MathQADataset',
     'MathQATrainDataset',
     'MathQATestDataset',
+    'MathQACodeTrainDataset',
+    'MathQACodeTestDataset',
 ]
 
-DATA_DIR = "/home/users/nus/e0672129/scratch"
+DATA_DIR = "/mnt/data/yuxi/math"
 
 
 class MathQADataset(RawDataset):
     SPLIT: ClassVar[str]
+    TYPE: ClassVar[str]
 
     def __init__(self) -> None:
-        gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
-        math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
-        arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
-        self.data = gsm8k + math + list(random.sample(arithmo, len(gsm8k + math) * 2))
+        if self.TYPE == 'pot':
+            gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
+            for i, dt in enumerate(gsm8k):
+                gsm8k[i]['question'] = dt['question'] + ' Write a Python program to solve this.'
+            arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
+            self.data = gsm8k + list(random.sample(arithmo, min(len(gsm8k) * 2, len(arithmo))))
+        else:
+            gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
+            math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
+            arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
+            self.data = gsm8k + math + list(random.sample(arithmo, min(len(gsm8k + math) * 2, len(arithmo))))
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -59,8 +70,22 @@ class MathQADataset(RawDataset):
 class MathQATrainDataset(MathQADataset):
     NAME: str = 'MathQA/train'
     SPLIT: str = 'train'
+    TYPE: str = 'cot'
 
 
 class MathQATestDataset(MathQADataset):
     NAME: str = 'MathQA/test'
     SPLIT: str = 'test'
+    TYPE: str = 'cot'
+
+
+class MathQACodeTrainDataset(MathQADataset):
+    NAME: str = 'MathQACode/train'
+    SPLIT: str = 'train'
+    TYPE: str = 'pot'
+
+
+class MathQACodeTestDataset(MathQADataset):
+    NAME: str = 'MathQACode/test'
+    SPLIT: str = 'test'
+    TYPE: str = 'pot'

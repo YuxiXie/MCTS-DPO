@@ -47,6 +47,7 @@ class SearchArgs(NamedTuple):
     no_self_eval: bool = False
     reward_model: deepspeed.DeepSpeedEngine = None
     reward_tokenizer: PreTrainedTokenizerBase = None
+    use_code: bool = False
 
 
 class StepLMConfig(SearchConfig):
@@ -75,6 +76,8 @@ class StepLMConfig(SearchConfig):
         self.no_self_eval = args.no_self_eval
         self.reward_model = args.reward_model
         self.reward_tokenizer = args.reward_tokenizer
+        
+        self.use_code = args.use_code
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -157,22 +160,32 @@ class StepLMConfig(SearchConfig):
             for seq in sequences:
                 full_generated = ' ' + self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
                 
-                raw_sentences = sent_tokenize(full_generated)
-                sentences, sent = [], ''
-                for i, raw_sent in enumerate(raw_sentences):
-                    sent += f' {raw_sent}' if len(sent) else raw_sent
-                    if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
-                        sentences.append(sent)
-                        sent = ''
-                if len(sentences) == 1:
-                    sentences = regex.split(r'\n[\n]+', full_generated)
+                if self.use_code:
+                    raw_sentences = regex.split(r'[\n]+', full_generated)
+                    sentences, sent = [], ''
+                    for i, raw_sent in enumerate(raw_sentences):
+                        sent += f'\n{raw_sent}'
+                        if (len(sent) > 3 and any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n'))) \
+                            or i == len(raw_sentences) - 1:    # Sentences cannot be too short
+                            sentences.append(sent)
+                            sent = ''
+                else:
+                    raw_sentences = sent_tokenize(full_generated)
+                    sentences, sent = [], ''
+                    for i, raw_sent in enumerate(raw_sentences):
+                        sent += f' {raw_sent}' if len(sent) else raw_sent
+                        if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
+                            sentences.append(sent)
+                            sent = ''
+                    if len(sentences) == 1:
+                        sentences = regex.split(r'\n[\n]+', full_generated)
                 
                 sents = []
                 for sid, sent in enumerate(sentences):
                     sents.append(sent)
                     if len(' '.join(sents).strip()) and sid >= len(sentences) - 2 and self.n_actions > 1:
                         break
-                step = ' '.join(sents)
+                step = '\n'.join(sents) if self.use_code else ' '.join(sents)
                 
                 text = step if len(sents) < len(sentences) else self.base_tokenizer.decode(seq[input_ids.size(-1):])
                 if text in unique_text_list or not text.strip():
@@ -333,7 +346,7 @@ class StepLMConfig(SearchConfig):
                             break
             
             if isinstance(gt_ans, str):
-                correct = math_equal(extract_answer(generated), gt_ans)
+                correct = math_equal(extract_answer(generated, use_code=self.use_code), gt_ans)
                 correct_score = 1 if correct else -1
             else:
                 correct_score = csr_equal(generated, gt_ans)
@@ -360,8 +373,11 @@ class StepLMConfig(SearchConfig):
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, None, action.device)
             else:
                 if self.example['reasoning'] and self.example['reasoning'] != self.example['answer_content']:
-                    solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
-                        else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
+                    if self.use_code:
+                        solution = self.example["reasoning"]
+                    else:
+                        solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
+                            else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
                     gt_ans = self.example["answer"]
                 else:
                     gt_ans = [f"({self.example['answer']})", self.example['answer_content']] \
@@ -375,6 +391,9 @@ class StepLMConfig(SearchConfig):
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, gt_ans, action.device)
             
             print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
+            if self.use_code and is_terminal:
+                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(extract_answer(prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, 
+                                                                                              use_code=self.use_code), gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN):
                 score += eval_correct_score

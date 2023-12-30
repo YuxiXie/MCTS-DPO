@@ -72,6 +72,7 @@ class MCTSTrainer(TSRLTrainer):
             no_self_eval=self.args.no_self_eval,
             reward_model=self.reward_model if self.use_reward_model else None,
             reward_tokenizer=self.reward_tokenizer if self.use_reward_model else None,
+            use_code=self.args.use_code,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -148,7 +149,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_sqa-rm.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_code.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
@@ -200,11 +201,13 @@ class MCTSTrainer(TSRLTrainer):
             text = self.tokenizer.decode(input_ids[-1], skip_special_tokens=True)
             if not text.startswith(PROMPT_BEGIN):
                 prediction = text.split(PROMPT_ASSISTANT)[-1]
-                if not solution[0].strip():
+                if self.args.use_code:
+                    is_correct = math_equal(extract_answer(prediction, use_code=self.args.use_code), solution[1])
+                elif not solution[0].strip():
                     is_correct = csr_equal(prediction, ('(' + solution[1].strip() + ')', ''))
                 else:
                     is_correct = math_equal(extract_answer(prediction), extract_answer(f'{solution[0]}\nThe answer is {solution[1]}'))
-        # import ipdb; ipdb.set_trace()
+        
         mini_batches['prediction'] = (r, is_correct,)
         return mini_batches
 

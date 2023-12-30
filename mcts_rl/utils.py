@@ -18,9 +18,14 @@ from __future__ import annotations
 
 import dataclasses
 import os
+import sys
 import regex
 import random
 import threading
+import func_timeout
+from io import StringIO
+from tqdm import tqdm
+from contextlib import redirect_stdout
 from collections import OrderedDict
 from typing import Any, Callable, Generator, TypeVar, cast
 from typing_extensions import TypeAlias  # Python 3.10+
@@ -446,7 +451,26 @@ def strip_string(string):
 
 ANSWER_INDICATOR = ' answer is'
 
-def extract_answer(pred_str):
+
+def safe_execute(code_string: str, maxtime=1):
+    def execute(x):
+        try:
+            f = StringIO()
+            with redirect_stdout(f):
+                exec(f'from math import *\n{x}')
+            return f.getvalue().strip()
+        except Exception as e:
+            return 'error'
+    try:
+        ans = func_timeout.func_timeout(maxtime, execute, args=(code_string,))
+    except func_timeout.FunctionTimedOut:
+        ans = 'timeerror'
+    return ans
+
+def extract_answer(pred_str, use_code=False):
+    if use_code:
+        return safe_execute(pred_str.strip())
+    
     if 'USER:' in pred_str:
         pred_str = pred_str.split('USER:')[0]
     if (ANSWER_INDICATOR in pred_str):
@@ -679,11 +703,11 @@ def get_choice_content(choice, question):
             return c.strip()
 
 
-def get_math_data(rawdata):
+def get_math_data(rawdata, use_code=False):
     outdata = []
-    for dt in rawdata:
+    for dt in tqdm(rawdata, desc='process math data', leave=False):
         question, answer = dt['question'], dt['answer']
-        if 'The answer is' in answer:
+        if 'The answer is' in answer and not use_code:
             final_answer = extract_answer(answer)
             if regex.match(r'\b[A-Za-z]\b', final_answer):
                 if 'answer choices:' not in question.lower(): continue
@@ -695,4 +719,13 @@ def get_math_data(rawdata):
                 'answer': final_answer,
                 'answer_content': get_choice_content(final_answer, question) if regex.match(r'\b[A-Za-z]\b', final_answer) else final_answer,
             })
+        elif regex.search(r'print\(.+\)', answer) and use_code:
+            final_answer = extract_answer(answer, use_code=True)
+            if final_answer:
+                outdata.append({
+                    'question': question, 'solution': answer,
+                    'answer': final_answer,
+                    'answer_content': get_choice_content(final_answer, question) if regex.match(r'\b[A-Za-z]\b', final_answer) \
+                        and 'answer choices:' in question.lower() else final_answer,
+                })
     return outdata

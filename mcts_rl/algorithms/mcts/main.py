@@ -79,6 +79,11 @@ def parse_arguments() -> argparse.Namespace:
     # Dataset
     dataset_parser = parser.add_argument_group('dataset')
     dataset_parser.add_argument(
+        '--use_code',
+        action='store_true',
+        default=False,
+    )
+    dataset_parser.add_argument(
         '--train_datasets',
         type=parse_dataset,
         nargs='+',
