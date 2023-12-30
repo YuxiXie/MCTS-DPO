@@ -27,6 +27,7 @@ __all__ = [
     'ArithmoTrainDataset',
     'ArithmoTestDataset',
     'ArithmoMATHTrainDataset',
+    'ArithmoMCQTrainDataset',
 ]
 
 
@@ -39,6 +40,11 @@ class ArithmoDataset(RawDataset):
         self.data = load_dataset(path or self.PATH, split=self.SPLIT)
         if self.TYPE == 'math':
             self.data = [dt for dt in self.data if ' answer is' in dt['answer']]
+        elif self.TYPE == 'mcq':
+            self.data = [
+                dt for dt in self.data if ' answer is' in dt['answer'] and not dt['answer'].startswith('The answer is') \
+                    and 'answer choices' in dt['question'].lower()
+            ]
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -73,3 +79,10 @@ class ArithmoMATHTrainDataset(ArithmoDataset):
     PATH: str = 'akjindal53244/Arithmo-Data'
     SPLIT: str = 'train'
     TYPE: str = 'math'
+
+class ArithmoMCQTrainDataset(ArithmoDataset):
+    NAME: str = 'ArithmoMCQ/train'
+    ALIASES: tuple[str, ...] = ('akjindal53244/Arithmo-Data/train/mcq',)
+    PATH: str = 'akjindal53244/Arithmo-Data'
+    SPLIT: str = 'train'
+    TYPE: str = 'mcq'

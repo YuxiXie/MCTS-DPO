@@ -55,6 +55,7 @@ from mcts_rl.datasets.raw.arithmo import (
     ArithmoTestDataset,
     ArithmoTrainDataset,
     ArithmoMATHTrainDataset,
+    ArithmoMCQTrainDataset,
 )
 from mcts_rl.datasets.raw.qa_feedback import (
     QAFBDataset,
@@ -136,4 +137,5 @@ __all__ = [
     'MathQADataset',
     'MathQATestDataset',
     'MathQATrainDataset',
+    'ArithmoMCQTrainDataset',
 ]
