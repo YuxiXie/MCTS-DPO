@@ -239,7 +239,8 @@ class TokenizedDataset(Dataset[Dict[str, torch.Tensor]]):
         tokenizer: transformers.PreTrainedTokenizerBase,
         lazy_tokenization: bool = True,
         seed: int = 42,
-    ) -> None:
+        use_mcq: bool = False,
+    ) -> None:        
         if not isinstance(dataset_names_and_attributes, dict):
             dataset_names_and_attributes = tuple(dataset_names_and_attributes)
             dataset_names = [name for name, _ in dataset_names_and_attributes]
@@ -282,6 +283,7 @@ class TokenizedDataset(Dataset[Dict[str, torch.Tensor]]):
 
         self.tokenizer = tokenizer
         self.seed = seed
+        self.use_mcq = use_mcq
 
         merged_rawdata = self._merge_raw_datasets(seed=seed)
         self.rawdata = [merged_rawdata[i] for i in range(len(merged_rawdata))]

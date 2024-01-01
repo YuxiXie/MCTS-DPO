@@ -84,6 +84,11 @@ def parse_arguments() -> argparse.Namespace:
         default=False,
     )
     dataset_parser.add_argument(
+        '--use_mcq',
+        action='store_true',
+        default=False,
+    )
+    dataset_parser.add_argument(
         '--train_datasets',
         type=parse_dataset,
         nargs='+',

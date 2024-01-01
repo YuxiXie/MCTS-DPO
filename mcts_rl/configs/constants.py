@@ -26,6 +26,7 @@ __all__ = [
     'PROMPT_BEGIN',
     'PROMPT_USER',
     'PROMPT_ASSISTANT',
+    'PROMPT_ASSISTANT_MCQ',
     'PROMPT_INPUT',
     'PROMPT_DICT',
     'ADAM_BETAS',
@@ -65,7 +66,7 @@ PROMPT_USER: str = 'QUESTION: {input}\n\n'
 # PROMPT_USER: str = '[INST] {input} [/INST]'
 
 # PROMPT_ASSISTANT: str = 'ASSISTANT:'  # should not have a space at the end
-# PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question'
+PROMPT_ASSISTANT_MCQ: str = 'ANSWER: Let\'s think about the multi-choice question'
 # PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
 PROMPT_ASSISTANT: str = 'ANSWER:'
 # PROMPT_ASSISTANT: str = '\nASSISTANT:'

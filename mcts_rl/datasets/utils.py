@@ -24,7 +24,8 @@ from torch.types import Number
 
 from mcts_rl.configs import (
     DEFAULT_EOS_TOKEN,
-    PROMPT_ASSISTANT, PROMPT_BEGIN, PROMPT_USER, 
+    PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ, 
+    PROMPT_BEGIN, PROMPT_USER, 
     COT_INSTRUCTIONS, 
     MATH_PROMPT, 
     GSM8K_PROMPT, GSM8K_EXP,
@@ -34,6 +35,7 @@ from mcts_rl.configs import (
 def format_prompt(
     input: str | list[str],  # pylint: disable=redefined-builtin
     eos_token: str,
+    use_mcq: bool = False,
 ) -> str:
     if isinstance(input, str):
         input = [input]
@@ -56,7 +58,8 @@ def format_prompt(
     for i, line in enumerate(input):
         if i % 2 == 0:
             # User input
-            buffer.extend((PROMPT_USER.format(input=line), PROMPT_ASSISTANT))
+            buffer.extend((PROMPT_USER.format(input=line), 
+                           PROMPT_ASSISTANT_MCQ if use_mcq else PROMPT_ASSISTANT))
         else:
             # Assistant response
             buffer.extend((line, eos_token))

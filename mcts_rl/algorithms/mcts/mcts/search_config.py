@@ -22,7 +22,7 @@ from mcts_rl.algorithms.mcts.mcts.world_model import StepLMState, StepLMAction
 from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks, check_match
 from mcts_rl.utils import extract_answer, math_equal, csr_equal
 from mcts_rl.configs import (
-    PROMPT_BEGIN, PROMPT_USER, PROMPT_ASSISTANT, 
+    PROMPT_BEGIN, PROMPT_USER, PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ,
     SELF_EVAL_I, SELF_EVAL_E, HH_EVAL_PROMPT, QA_EVAL_PROMPT,
     EVAL_PROMPT_USER, EVAL_PROMPT_ASSISTANT, EVAL_PROMPT, SAFE_EVAL_PROMPT,
     ANSWER_HINT, HINTED_PROMPT, HINTED_EVAL_PROMPT, HINTED_EVAL_PROMPT_I,  REWARD_EVAL_PROMPT,
@@ -48,6 +48,7 @@ class SearchArgs(NamedTuple):
     reward_model: deepspeed.DeepSpeedEngine = None
     reward_tokenizer: PreTrainedTokenizerBase = None
     use_code: bool = False
+    use_mcq: bool = False
 
 
 class StepLMConfig(SearchConfig):
@@ -78,6 +79,9 @@ class StepLMConfig(SearchConfig):
         self.reward_tokenizer = args.reward_tokenizer
         
         self.use_code = args.use_code
+        self.use_mcq = args.use_mcq
+        
+        self.prompt_assistant = PROMPT_ASSISTANT_MCQ if self.use_mcq else PROMPT_ASSISTANT
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -127,7 +131,7 @@ class StepLMConfig(SearchConfig):
     def get_actions(self, policy_model, state: StepLMState, add_kl: bool = False) -> list[StepLMAction]:
         at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 >= self.depth_limit
         n_actions = self.n_init_actions if not len(state) else self.n_actions
-        n_actions = 1 if at_depth_limit else n_actions
+        n_actions = 2 if at_depth_limit else n_actions  # TODO: magic number
         
         assert self.example['input_ids'].dim() == 1, "Input IDs should be a 1-dim sequence for a single example"
         assert self.generation_config.num_return_sequences == 1, "Otherwise will get stuck"
@@ -160,6 +164,7 @@ class StepLMConfig(SearchConfig):
             for seq in sequences:
                 full_generated = ' ' + self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
                 
+                newline_flag = True
                 if self.use_code:
                     raw_sentences = regex.split(r'[\n]+', full_generated)
                     sentences, sent = [], ''
@@ -170,22 +175,29 @@ class StepLMConfig(SearchConfig):
                             sentences.append(sent)
                             sent = ''
                 else:
-                    raw_sentences = sent_tokenize(full_generated)
+                    raw_sentences = regex.split(r'[\n]+', full_generated)
                     sentences, sent = [], ''
                     for i, raw_sent in enumerate(raw_sentences):
-                        sent += f' {raw_sent}' if len(sent) else raw_sent
+                        sent += f'\n{raw_sent}' if len(sent) else raw_sent
                         if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
                             sentences.append(sent)
                             sent = ''
                     if len(sentences) == 1:
-                        sentences = regex.split(r'\n[\n]+', full_generated)
+                        newline_flag = False
+                        raw_sentences = sent_tokenize(full_generated)
+                        sentences, sent = [], ''
+                        for i, raw_sent in enumerate(raw_sentences):
+                            sent += f' {raw_sent}' if len(sent) else raw_sent
+                            if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
+                                sentences.append(sent)
+                                sent = ''
                 
                 sents = []
                 for sid, sent in enumerate(sentences):
                     sents.append(sent)
                     if len(' '.join(sents).strip()) and sid >= len(sentences) - 2 and self.n_actions > 1:
                         break
-                step = '\n'.join(sents) if self.use_code else ' '.join(sents)
+                step = '\n'.join(sents) if newline_flag else ' '.join(sents)
                 
                 text = step if len(sents) < len(sentences) else self.base_tokenizer.decode(seq[input_ids.size(-1):])
                 if text in unique_text_list or not text.strip():
@@ -239,7 +251,7 @@ class StepLMConfig(SearchConfig):
             input_txt = self.base_tokenizer.decode(input_ids, skip_special_tokens=True)
             gt_ans = f"({self.example['answer']}) {self.example['answer_content']}" \
                 if self.example['answer'] != self.example['answer_content'] else f"{self.example['answer']}"
-            input_prompt = input_txt.split(PROMPT_ASSISTANT)[0].rstrip() + '\n' + ANSWER_HINT.format(answer=gt_ans, prompt=PROMPT_ASSISTANT)
+            input_prompt = input_txt.split(self.prompt_assistant)[0].rstrip() + '\n' + ANSWER_HINT.format(answer=gt_ans, prompt=self.prompt_assistant)
             input_ids = self.base_tokenizer(
                 input_prompt,
                 add_special_tokens=True,
@@ -363,14 +375,14 @@ class StepLMConfig(SearchConfig):
             is_terminal = step.endswith(self.base_tokenizer.eos_token)
             if is_terminal:
                 step = step[:-len(self.base_tokenizer.eos_token)]
-            texts = prompt.split(PROMPT_ASSISTANT)
-            input_txt = PROMPT_ASSISTANT.join(texts[:-1])# + PROMPT_ASSISTANT
+            texts = prompt.split(self.prompt_assistant)
+            input_txt = self.prompt_assistant.join(texts[:-1])# + PROMPT_ASSISTANT
             init_answer = texts[-1] if len(texts) > 1 else ''
             
             if input_txt.startswith(PROMPT_BEGIN):
-                eval_prompt = HH_EVAL_PROMPT.format(input=input_txt, prompt=PROMPT_ASSISTANT + texts[-1] + step)
-                # eval_prompt = QA_EVAL_PROMPT.format(input=input_txt, prompt=PROMPT_ASSISTANT + texts[-1] + step)
-                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, None, action.device)
+                eval_prompt = HH_EVAL_PROMPT.format(input=input_txt, prompt=self.prompt_assistant + texts[-1] + step)
+                # eval_prompt = QA_EVAL_PROMPT.format(input=input_txt, prompt=self.prompt_assistant + texts[-1] + step)
+                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + ' ' + step, None, action.device)
             else:
                 if self.example['reasoning'] and self.example['reasoning'] != self.example['answer_content']:
                     if self.use_code:
@@ -388,11 +400,11 @@ class StepLMConfig(SearchConfig):
                                                             eos_token=self.reward_tokenizer.eos_token)
                 else:
                     eval_prompt = HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, prompt=init_answer + step)
-                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, gt_ans, action.device)
+                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + ' ' + step, gt_ans, action.device)
             
             print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             if self.use_code and is_terminal:
-                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(extract_answer(prompt.split(PROMPT_ASSISTANT)[-1] + ' ' + step, 
+                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(extract_answer(prompt.split(self.prompt_assistant)[-1] + ' ' + step, 
                                                                                               use_code=self.use_code), gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN):

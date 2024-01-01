@@ -73,6 +73,7 @@ class MCTSTrainer(TSRLTrainer):
             reward_model=self.reward_model if self.use_reward_model else None,
             reward_tokenizer=self.reward_tokenizer if self.use_reward_model else None,
             use_code=self.args.use_code,
+            use_mcq=self.args.use_mcq,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -230,8 +231,9 @@ class MCTSTrainer(TSRLTrainer):
         init_value_list: list[float] = None,
         max_n_sample: int = 8,
     ) -> dict[str, Any]:
-        losses, better_sample_rewards, worse_sample_rewards = [], [], []
+        losses, better_sample_rewards, worse_sample_rewards, max_lengths = [], [], [], []
         n_sample = len(input_ids_list)
+        start = prompts_list[0].size(-1) - 1
         for sample_id in range(n_sample):
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
@@ -282,10 +284,14 @@ class MCTSTrainer(TSRLTrainer):
             losses.append(-F.logsigmoid(self.scale_coeff * (better_log_ratio - worse_log_ratio)))
             better_sample_rewards.append(self.scale_coeff * better_log_ratio.detach())
             worse_sample_rewards.append(self.scale_coeff * worse_log_ratio.detach())
+            
+            max_lengths.append(better_attention_mask[start:].float().sum())
+            max_lengths.append(worse_attention_mask[start:].float().sum())
         
         if not len(losses): return {}
         
         loss = torch.stack(losses).mean()
+        max_generated_length = torch.stack(max_lengths).max()
         better_sample_rewards = torch.stack(better_sample_rewards)  # size = (B,)
         worse_sample_rewards = torch.stack(worse_sample_rewards)  # size = (B,)
         rewards_accuracy = (
@@ -297,8 +303,13 @@ class MCTSTrainer(TSRLTrainer):
         rewards_margin = better_sample_rewards - worse_sample_rewards  # size = ()
         
         torch.cuda.empty_cache()
-        self.actor_model.backward(loss)
-        self.actor_model.step()
+        flag_loss = True
+        try:
+            self.actor_model.backward(loss)
+            self.actor_model.step()
+        except Exception as e:
+            print('\n{}'.format(str(e)))
+            flag_loss = False
         
         loss = get_all_reduce_mean(loss)
         rewards = get_all_reduce_mean(rewards)
@@ -306,6 +317,7 @@ class MCTSTrainer(TSRLTrainer):
         worse_sample_rewards = get_all_reduce_mean(worse_sample_rewards)
         rewards_accuracy = get_all_reduce_mean(rewards_accuracy)
         rewards_margin = get_all_reduce_mean(rewards_margin)
+        max_generated_length = get_all_reduce_max(max_generated_length)
         
         return {
             'train/loss': loss.item(),
@@ -318,5 +330,6 @@ class MCTSTrainer(TSRLTrainer):
             'train/r_scores': float(prediction[0]),
             'train/correct': float(prediction[1]),
             'train/n_sample': n_sample,
-        }
+            'train/max_generated_length': max_generated_length.item(),
+        } if flag_loss else None
     
