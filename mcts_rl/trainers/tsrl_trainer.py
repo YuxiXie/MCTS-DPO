@@ -185,6 +185,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         prompt_only_dataset = PromptOnlyDataset(
             self.args.train_datasets,
             tokenizer=self.tokenizer,
+            use_mcq=self.args.use_mcq,
         ) if not self.args.post else PromptOnlyPostDataset(
             self.args.train_datasets,
             tokenizer=self.tokenizer,
@@ -407,12 +408,16 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
 
     def ptx_step(self, ptx_batch: dict[str, torch.Tensor]) -> dict[str, Any]:
         """Perform a single update step with PTX loss."""
-        ptx_loss = self.actor_model(
-            input_ids=ptx_batch['input_ids'],
-            attention_mask=ptx_batch['attention_mask'],
-            labels=ptx_batch['labels'],
-        ).loss
-        self.actor_model.backward(self.ptx_coeff * ptx_loss)
+        torch.cuda.empty_cache()
+        try:
+            ptx_loss = self.actor_model(
+                input_ids=ptx_batch['input_ids'],
+                attention_mask=ptx_batch['attention_mask'],
+                labels=ptx_batch['labels'],
+            ).loss
+            self.actor_model.backward(self.ptx_coeff * ptx_loss)
+        except Exception as e:
+            print('\n{}'.format(str(e)))
         self.actor_model.step()
 
         ptx_loss = get_all_reduce_mean(ptx_loss)
@@ -479,7 +484,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                     for rl_batch, ptx_batch in zip(rl_batches, ptx_batches):
                         if not check_available(rl_batch, max_tokens=self.args.max_length): continue
                         rl_info = self.tsrl_step(**rl_batch)
-                        if not len(rl_info): continue
+                        if rl_info is None or not len(rl_info): continue
                         torch.cuda.empty_cache()
                         self.logger.log(rl_info, step=self.global_step)
                         if self.use_ptx:
