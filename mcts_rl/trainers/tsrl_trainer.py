@@ -206,6 +206,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 eval_dataset = PromptOnlyDataset(
                     self.args.eval_datasets,
                     tokenizer=self.tokenizer,
+                    use_mcq=self.args.use_mcq,
                 )
                 self.eval_dataloader = DataLoader(
                     eval_dataset,
