@@ -27,12 +27,13 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps25209"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/noptx/mistral-d4-4x2"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/noptx/mistral-d4-4x3"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -165,7 +166,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--n_iters 5 \
 	--depth_limit 4 \
 	--n_init_actions 4 \
-	--n_actions 2 \
+	--n_actions 3 \
 	--mcts_temperature 0.0
 
 # --force_terminating_on_depth_limit \

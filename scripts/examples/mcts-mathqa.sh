@@ -27,13 +27,12 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps25209"
+# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/csr/noptx/mistral-d4-4x3"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/sampling/mistral-d5-4x3"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -126,9 +125,8 @@ gpu_vis=0
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets CSR/train \
-	--ptx_datasets ArithmoMCQ/train \
-	--use_mcq \
+	--train_datasets MathQA/train \
+	--ptx_datasets ArithmoMATH/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
@@ -157,19 +155,21 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-MCQ-CSR \
+	--log_project MCTS-DPO-MathQA-CoT \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
 	--max_new_tokens 64 \
 	--n_iters 5 \
-	--depth_limit 4 \
+	--depth_limit 5 \
 	--n_init_actions 4 \
 	--n_actions 3 \
+	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
-# --force_terminating_on_depth_limit \
+# --no_consider_diversity \
+# --no_self_eval
 # --per_device_eval_batch_size 1 \
 # --need_eval \
 # --eval_datasets PRM800K/test \
