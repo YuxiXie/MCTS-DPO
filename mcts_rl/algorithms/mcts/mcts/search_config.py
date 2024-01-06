@@ -131,7 +131,10 @@ class StepLMConfig(SearchConfig):
     def get_actions(self, policy_model, state: StepLMState, add_kl: bool = False) -> list[StepLMAction]:
         at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 >= self.depth_limit
         n_actions = self.n_init_actions if not len(state) else self.n_actions
-        n_actions = 1 if at_depth_limit else n_actions  # TODO: magic number
+        if self.use_mcq:
+            n_actions = 2 if at_depth_limit else n_actions  # TODO: magic number
+        else:
+            n_actions = 1 if at_depth_limit else n_actions  # TODO: magic number
         
         assert self.example['input_ids'].dim() == 1, "Input IDs should be a 1-dim sequence for a single example"
         assert self.generation_config.num_return_sequences == 1, "Otherwise will get stuck"
