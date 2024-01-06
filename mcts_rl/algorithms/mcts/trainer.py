@@ -234,6 +234,8 @@ class MCTSTrainer(TSRLTrainer):
         losses, better_sample_rewards, worse_sample_rewards, max_lengths = [], [], [], []
         n_sample = len(input_ids_list)
         start = prompts_list[0].size(-1) - 1
+        better_idx = -1
+        worse_idx = 0 if self.args.choose_worst else -2
         for sample_id in range(n_sample):
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
@@ -256,10 +258,10 @@ class MCTSTrainer(TSRLTrainer):
                     attention_mask=attention_mask,
                 )
             
-            better_input_ids, worse_input_ids = input_ids[-1], input_ids[0]
-            better_attention_mask, worse_attention_mask = attention_mask[-1], attention_mask[0]
-            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[-1], sequence_log_probs[0]
-            ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[-1], ref_sequence_log_probs[0]
+            better_input_ids, worse_input_ids = input_ids[better_idx], input_ids[worse_idx]
+            better_attention_mask, worse_attention_mask = attention_mask[better_idx], attention_mask[worse_idx]
+            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[better_idx], sequence_log_probs[worse_idx]
+            ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[better_idx], ref_sequence_log_probs[worse_idx]
             # better_init_value, worse_init_value = init_values[-1], init_values[0]
             
             better_end_index = better_attention_mask.nonzero()[-1]
