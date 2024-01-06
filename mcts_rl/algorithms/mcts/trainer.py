@@ -239,10 +239,14 @@ class MCTSTrainer(TSRLTrainer):
         for sample_id in range(n_sample):
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
-            # init_values = init_value_list[sample_id]
             
             n_output = input_ids.size(0)
             if n_output < 2: continue
+            
+            better_input_ids, worse_input_ids = input_ids[better_idx], input_ids[worse_idx]
+            better_attention_mask, worse_attention_mask = attention_mask[better_idx], attention_mask[worse_idx]
+            input_ids = torch.stack([better_input_ids, worse_input_ids], dim=0)
+            attention_mask = torch.stack([better_attention_mask, worse_attention_mask], dim=0)
             
             torch.cuda.empty_cache()
             sequence_log_probs = self.compute_log_probs(
@@ -258,11 +262,8 @@ class MCTSTrainer(TSRLTrainer):
                     attention_mask=attention_mask,
                 )
             
-            better_input_ids, worse_input_ids = input_ids[better_idx], input_ids[worse_idx]
-            better_attention_mask, worse_attention_mask = attention_mask[better_idx], attention_mask[worse_idx]
-            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[better_idx], sequence_log_probs[worse_idx]
-            ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[better_idx], ref_sequence_log_probs[worse_idx]
-            # better_init_value, worse_init_value = init_values[-1], init_values[0]
+            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
+            ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[0], ref_sequence_log_probs[-1]
             
             better_end_index = better_attention_mask.nonzero()[-1]
             worse_end_index = worse_attention_mask.nonzero()[-1]
