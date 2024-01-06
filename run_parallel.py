@@ -1,11 +1,14 @@
 import os
 import sys
+import time
 import subprocess
 from concurrent.futures import ProcessPoolExecutor as Pool
 
 
 def main(argv):
     gpu_id, fname = argv
+    if gpu_id:
+        time.sleep(100)
     completed_process = subprocess.run(["bash", fname], 
                                        capture_output=True, 
                                        text=True)
