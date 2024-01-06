@@ -114,6 +114,11 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--offline',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
         '--resume_from_ckpt',
         type=str,
         help='The directory to load optimizer and lr-scheduler.',

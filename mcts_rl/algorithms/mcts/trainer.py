@@ -100,7 +100,7 @@ class MCTSTrainer(TSRLTrainer):
         seq, attn_msk = input_ids[0], attention_mask[0]
         gt_answer, solution = answer[0], prompt_only_batch['reasoning'][0]
         
-        self.mcts_searcher.search_algo.policy_model = self.actor_model
+        self.mcts_searcher.search_algo.policy_model = self.actor_reference_model if self.args.offline else self.actor_model
         target_probs, Q_values, r_values, base_values, select_indexes = [], [], [], [], []
         cur_node = None
         while cur_node is None or not cur_node.is_terminal:
