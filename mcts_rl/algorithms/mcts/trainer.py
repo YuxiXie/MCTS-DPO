@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import random
 import torch
 from torch.nn.utils.rnn import pad_sequence
 import torch.distributed as dist
@@ -243,6 +244,8 @@ class MCTSTrainer(TSRLTrainer):
             n_output = input_ids.size(0)
             if n_output < 2: continue
             
+            if self.args.choose_random:
+                worse_idx = random.choice(range(n_output - 1))
             better_input_ids, worse_input_ids = input_ids[better_idx], input_ids[worse_idx]
             better_attention_mask, worse_attention_mask = attention_mask[better_idx], attention_mask[worse_idx]
             input_ids = torch.stack([better_input_ids, worse_input_ids], dim=0)
