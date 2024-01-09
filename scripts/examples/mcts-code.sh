@@ -27,60 +27,14 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/sampling/mistral-d4-4x3"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/code/mistral-online-mcts"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
-while [[ "$#" -gt 0 ]]; do
-	arg="$1"
-	shift
-	case "${arg}" in
-		--actor_model_name_or_path)
-			ACTOR_MODEL_NAME_OR_PATH="$1"
-			shift
-			;;
-		--actor_model_name_or_path=*)
-			ACTOR_MODEL_NAME_OR_PATH="${arg#*=}"
-			;;
-		--output_dir)
-			OUTPUT_DIR="$1"
-			shift
-			;;
-		--output_dir=*)
-			OUTPUT_DIR="${arg#*=}"
-			;;
-		--hostfile)
-			HOSTFILE="$1"
-			shift
-			;;
-		--hostfile=*)
-			HOSTFILE="${arg#*=}"
-			;;
-		--zero_stage)
-			ZERO_STAGE="$1"
-			shift
-			;;
-		--zero_stage=*)
-			ZERO_STAGE="${arg#*=}"
-			;;
-		--offload)
-			OFFLOAD="$1"
-			shift
-			;;
-		--offload=*)
-			OFFLOAD="${arg#*=}"
-			;;
-		*)
-			echo "Unknown parameter passed: '${arg}'" >&2
-			exit 1
-			;;
-	esac
-done
 
 if [[ -z "${REWARD_CRITIC_MODEL_NAME_OR_PATH+x}" ]]; then
 	REWARD_CRITIC_MODEL_NAME_OR_PATH="${REWARD_MODEL_NAME_OR_PATH}"
@@ -116,7 +70,7 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
-export WANDB_MODE=online
+export WANDB_MODE=dryrun
 
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
@@ -143,7 +97,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 1e-7 \
+	--actor_lr 4e-7 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
 	--actor_lr_warmup_ratio 0.03 \
@@ -156,15 +110,15 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-MathQA-CoT \
+	--log_project MCTS-DPO-MathQA-PoT-yuxi \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
 	--max_new_tokens 64 \
 	--n_iters 5 \
-	--depth_limit 4 \
-	--n_init_actions 4 \
+	--depth_limit 3 \
+	--n_init_actions 5 \
 	--n_actions 3 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0

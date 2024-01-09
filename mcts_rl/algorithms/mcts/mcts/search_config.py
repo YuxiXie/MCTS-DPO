@@ -129,7 +129,7 @@ class StepLMConfig(SearchConfig):
     
     @torch.no_grad()
     def get_actions(self, policy_model, state: StepLMState, add_kl: bool = False) -> list[StepLMAction]:
-        at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 >= self.depth_limit
+        at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 > self.depth_limit
         n_actions = self.n_init_actions if not len(state) else self.n_actions
         if self.use_mcq:
             n_actions = 2 if at_depth_limit else n_actions  # TODO: magic number
@@ -168,32 +168,26 @@ class StepLMConfig(SearchConfig):
                 full_generated = ' ' + self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
                 
                 newline_flag = True
-                if self.use_code:
-                    raw_sentences = regex.split(r'[\n]+', full_generated)
-                    sentences, sent = [], ''
-                    for i, raw_sent in enumerate(raw_sentences):
-                        sent += f'\n{raw_sent}'
-                        if (len(sent) > 3 and any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n'))) \
-                            or i == len(raw_sentences) - 1:    # Sentences cannot be too short
+                raw_sentences = regex.split(r'[\n]+', full_generated)
+                sentences, sent = [], ''
+                for i, raw_sent in enumerate(raw_sentences):
+                    sent += f'\n{raw_sent}' if self.use_code or len(sent) else raw_sent
+                    if i == len(raw_sentences) - 1:
+                        sentences.append(sent)
+                        sent = ''
+                    elif len(sent) > 3:    # Sentences cannot be too short
+                        if not self.use_code or any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n')):
                             sentences.append(sent)
                             sent = ''
-                else:
-                    raw_sentences = regex.split(r'[\n]+', full_generated)
+                if not self.use_code and len(sentences) == 1:
+                    newline_flag = False
+                    raw_sentences = sent_tokenize(full_generated)
                     sentences, sent = [], ''
                     for i, raw_sent in enumerate(raw_sentences):
-                        sent += f'\n{raw_sent}' if len(sent) else raw_sent
-                        if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
+                        sent += f' {raw_sent}' if len(sent) else raw_sent
+                        if len(sent) > 3 or i == len(raw_sentences) - 1:
                             sentences.append(sent)
                             sent = ''
-                    if len(sentences) == 1:
-                        newline_flag = False
-                        raw_sentences = sent_tokenize(full_generated)
-                        sentences, sent = [], ''
-                        for i, raw_sent in enumerate(raw_sentences):
-                            sent += f' {raw_sent}' if len(sent) else raw_sent
-                            if len(sent) > 3 or i == len(raw_sentences) - 1:    # Sentences cannot be too short
-                                sentences.append(sent)
-                                sent = ''
                 
                 sents = []
                 for sid, sent in enumerate(sentences):
