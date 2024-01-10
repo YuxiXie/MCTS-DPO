@@ -165,18 +165,21 @@ class StepLMConfig(SearchConfig):
                 )
             
             for seq in sequences:
-                full_generated = ' ' + self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
+                full_generated = self.base_tokenizer.decode(seq, skip_special_tokens=True)
+                full_generated = full_generated.replace(prompt, '') if full_generated.startswith(prompt) else \
+                                    self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
                 
                 newline_flag = True
                 raw_sentences = regex.split(r'[\n]+', full_generated)
                 sentences, sent = [], ''
                 for i, raw_sent in enumerate(raw_sentences):
-                    sent += f'\n{raw_sent}' if self.use_code or len(sent) else raw_sent
+                    sent += f'\n{raw_sent}' if i else raw_sent
                     if i == len(raw_sentences) - 1:
                         sentences.append(sent)
                         sent = ''
                     elif len(sent) > 3:    # Sentences cannot be too short
-                        if not self.use_code or any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n')):
+                        if not self.use_code or (any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n')) \
+                            and all(not sent.strip().endswith(x) for x in [':', '(', '['])):
                             sentences.append(sent)
                             sent = ''
                 if not self.use_code and len(sentences) == 1:
@@ -193,15 +196,16 @@ class StepLMConfig(SearchConfig):
                 for sid, sent in enumerate(sentences):
                     sents.append(sent)
                     if len(' '.join(sents).strip()) and sid >= len(sentences) - 2 and self.n_actions > 1:
-                        break
+                        if len(state) + 1 < self.depth_limit:
+                            break
                 step = '\n'.join(sents) if newline_flag else ' '.join(sents)
                 
-                text = step if len(sents) < len(sentences) else self.base_tokenizer.decode(seq[input_ids.size(-1):])
+                text = step if len(sents) < len(sentences) else full_generated
                 if text in unique_text_list or not text.strip():
                     continue
                 
                 gen_ids = self.base_tokenizer(
-                    prompt + step,
+                    prompt + text,
                     add_special_tokens=True,
                     truncation=TruncationStrategy.LONGEST_FIRST,
                     return_tensors='pt',
@@ -212,7 +216,7 @@ class StepLMConfig(SearchConfig):
                     continue
                 sequences_list.append(gen_ids)
                 unique_text_list.append(text)
-            
+        
         if not len(sequences_list):
             sequences_list.append(torch.tensor([self.base_tokenizer.eos_token_id]).to(input_ids.device))
             unique_text_list.append(self.base_tokenizer.eos_token)
@@ -355,7 +359,8 @@ class StepLMConfig(SearchConfig):
                             break
             
             if isinstance(gt_ans, str):
-                correct = math_equal(extract_answer(generated, use_code=self.use_code), gt_ans)
+                pred = extract_answer(generated, use_code=self.use_code)
+                correct = math_equal(pred, gt_ans)
                 correct_score = 1 if correct else -1
             else:
                 correct_score = csr_equal(generated, gt_ans)
@@ -397,12 +402,12 @@ class StepLMConfig(SearchConfig):
                                                             eos_token=self.reward_tokenizer.eos_token)
                 else:
                     eval_prompt = HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, prompt=init_answer + step)
-                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + ' ' + step, gt_ans, action.device)
+                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + step, gt_ans, action.device)
             
             print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             if self.use_code and is_terminal:
-                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(extract_answer(prompt.split(self.prompt_assistant)[-1] + ' ' + step, 
-                                                                                              use_code=self.use_code), gt_ans))
+                pred = extract_answer(prompt.split(self.prompt_assistant)[-1] + step, use_code=self.use_code)
+                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN):
                 score += eval_correct_score
@@ -420,8 +425,7 @@ class StepLMConfig(SearchConfig):
             {'logscore': logscore, 'logprob': logprob}
 
     def reward(self, state: StepLMState, action: StepLMAction,
-               logscore: float = None,
-               logprob: float = None) -> tuple[float, dict]:
+               logscore: float = None, logprob: float = None) -> tuple[float, dict]:
         assert logscore is not None, "score from RM is required to calculate reward in this search config, consider passing it in fast_reward"
         assert logprob is not None, "confidence from LM is required to calculate reward in this search config, consider passing it in world model's step"
         return self.calculate_reward(logscore, logprob)
