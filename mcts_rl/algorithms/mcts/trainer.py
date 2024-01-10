@@ -97,7 +97,7 @@ class MCTSTrainer(TSRLTrainer):
         input_ids = prompt_only_batch['input_ids']
         attention_mask = prompt_only_batch['attention_mask']
         answer = prompt_only_batch['answer']
-        assert input_ids.size(0) == 1, '''Only support one instance per device.'''        
+        assert input_ids.size(0) == 1, '''Only support one instance per device.'''
         seq, attn_msk = input_ids[0], attention_mask[0]
         gt_answer, solution = answer[0], prompt_only_batch['reasoning'][0]
         
@@ -122,9 +122,11 @@ class MCTSTrainer(TSRLTrainer):
             
             cur_node = cur_node.children[mcts_rst.next_action_idx]
             select_indexes.append(mcts_rst.next_action_idx)
+            
+            if self.args.n_actions == 1: break
         
         dist.barrier()
-
+        
         return [
             self.post_tree_construct(
                 prompt=input_ids[idx],

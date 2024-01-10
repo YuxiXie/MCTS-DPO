@@ -132,7 +132,7 @@ class StepLMConfig(SearchConfig):
         at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 > self.depth_limit
         n_actions = self.n_init_actions if not len(state) else self.n_actions
         if self.use_mcq:
-            n_actions = 2 if at_depth_limit else n_actions  # TODO: magic number
+            n_actions = 2 if at_depth_limit and self.n_actions > 1 else n_actions  # TODO: magic number
         else:
             n_actions = 1 if at_depth_limit else n_actions  # TODO: magic number
         
