@@ -31,7 +31,7 @@ ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistr
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-mcts"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/cost-mistral-online-mcts"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -91,7 +91,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
-	--save_interval 256 \
+	--save_interval 128 \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
@@ -118,7 +118,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--n_iters 5 \
 	--depth_limit 3 \
 	--n_init_actions 5 \
-	--n_actions 3 \
+	--n_actions 5 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
