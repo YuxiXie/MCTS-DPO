@@ -171,26 +171,28 @@ class StepLMConfig(SearchConfig):
                 
                 newline_flag = True
                 raw_sentences = regex.split(r'[\n]+', full_generated)
-                sentences, sent = [], ''
+                sentences, sent, subcnt = [], '', 0
                 for i, raw_sent in enumerate(raw_sentences):
-                    sent += f'\n{raw_sent}' if i else raw_sent
+                    sent += f'\n{raw_sent}' if subcnt else raw_sent
+                    subcnt += 1
                     if i == len(raw_sentences) - 1:
                         sentences.append(sent)
-                        sent = ''
+                        sent, subcnt = '', 0
                     elif len(sent) > 3:    # Sentences cannot be too short
                         if not self.use_code or (any(x.strip() and not x.strip().startswith('#') for x in sent.split('\n')) \
                             and all(not sent.strip().endswith(x) for x in [':', '(', '['])):
                             sentences.append(sent)
-                            sent = ''
+                            sent, subcnt = '', 0
                 if not self.use_code and len(sentences) == 1:
                     newline_flag = False
                     raw_sentences = sent_tokenize(full_generated)
-                    sentences, sent = [], ''
+                    sentences, sent, subcnt = [], '', 0
                     for i, raw_sent in enumerate(raw_sentences):
-                        sent += f' {raw_sent}' if len(sent) else raw_sent
+                        sent += f' {raw_sent}' if subcnt else raw_sent
+                        subcnt += 1
                         if len(sent) > 3 or i == len(raw_sentences) - 1:
                             sentences.append(sent)
-                            sent = ''
+                            sent, subcnt = '', 0
                 
                 sents = []
                 for sid, sent in enumerate(sentences):
