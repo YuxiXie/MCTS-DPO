@@ -121,7 +121,7 @@ def parse_arguments() -> argparse.Namespace:
     training_parser.add_argument(
         '--choose_random',
         action='store_true',
-        default=False,
+        default=True,
     )
     training_parser.add_argument(
         '--offline',
