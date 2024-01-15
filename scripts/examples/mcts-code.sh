@@ -75,7 +75,7 @@ export WANDB_MODE=dryrun
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=0
+gpu_vis=1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
@@ -119,11 +119,11 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--n_iters 5 \
 	--depth_limit 3 \
 	--n_init_actions 5 \
-	--n_actions 3 \
+	--n_actions 5 \
+    --no_consider_diversity \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
-# --no_consider_diversity \
 # --no_self_eval
 # --per_device_eval_batch_size 1 \
 # --need_eval \

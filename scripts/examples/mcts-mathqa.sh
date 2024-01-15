@@ -31,7 +31,7 @@ ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistr
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/cost-mistral-online-mcts"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-mcts"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -70,7 +70,7 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
-export WANDB_MODE=online
+export WANDB_MODE=dryrun
 
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
@@ -119,10 +119,10 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--depth_limit 3 \
 	--n_init_actions 5 \
 	--n_actions 5 \
+    --no_consider_diversity \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
-# --no_consider_diversity \
 # --no_self_eval
 # --per_device_eval_batch_size 1 \
 # --need_eval \
