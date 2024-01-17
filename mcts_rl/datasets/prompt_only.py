@@ -49,7 +49,7 @@ class PromptOnlyBatch(TypedDict, total=True):
 class PromptOnlyDataset(TokenizedDataset):
     def preprocess(self, raw_sample: RawSample) -> PromptOnlySample:
         try:
-            prompt = format_prompt(input=raw_sample['input'], eos_token=self.tokenizer.eos_token, use_mcq=self.use_mcq)
+            prompt = format_prompt(input=raw_sample['input'], eos_token=self.tokenizer.eos_token, use_mcq=self.use_mcq, few_shot=self.few_shot)
         except:
             import ipdb; ipdb.set_trace()
         input_ids = self.tokenize(prompt)

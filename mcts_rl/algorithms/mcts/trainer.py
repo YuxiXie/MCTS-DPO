@@ -75,6 +75,7 @@ class MCTSTrainer(TSRLTrainer):
             reward_tokenizer=self.reward_tokenizer if self.use_reward_model else None,
             use_code=self.args.use_code,
             use_mcq=self.args.use_mcq,
+            eval_mode=self.args.eval_mode,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,

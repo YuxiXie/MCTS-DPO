@@ -89,6 +89,11 @@ def parse_arguments() -> argparse.Namespace:
         default=False,
     )
     dataset_parser.add_argument(
+        '--few_shot',
+        action='store_true',
+        default=False,
+    )
+    dataset_parser.add_argument(
         '--train_datasets',
         type=parse_dataset,
         nargs='+',
@@ -324,6 +329,11 @@ def parse_arguments() -> argparse.Namespace:
     
     # MCTS
     mcts_parser = parser.add_argument_group('mcts')
+    mcts_parser.add_argument(
+        '--eval_mode',
+        action='store_true',
+        default=False,
+    )
     mcts_parser.add_argument(
         '--post',
         action='store_true',

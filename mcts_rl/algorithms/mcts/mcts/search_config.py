@@ -49,6 +49,7 @@ class SearchArgs(NamedTuple):
     reward_tokenizer: PreTrainedTokenizerBase = None
     use_code: bool = False
     use_mcq: bool = False
+    eval_mode: bool = False
 
 
 class StepLMConfig(SearchConfig):
@@ -80,6 +81,7 @@ class StepLMConfig(SearchConfig):
         
         self.use_code = args.use_code
         self.use_mcq = args.use_mcq
+        self.eval_mode = args.eval_mode
         
         self.prompt_assistant = PROMPT_ASSISTANT_MCQ if self.use_mcq else PROMPT_ASSISTANT
 
@@ -411,7 +413,7 @@ class StepLMConfig(SearchConfig):
                 pred = extract_answer(prompt.split(self.prompt_assistant)[-1] + step, use_code=self.use_code)
                 print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
-            if is_terminal and not input_txt.startswith(PROMPT_BEGIN):
+            if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
                 if self.n_actions < 2 or parent_depth > 1 or eval_correct_score <= 0 or not self.use_mcq:
                     score += eval_correct_score
 
