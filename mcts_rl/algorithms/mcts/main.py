@@ -119,6 +119,11 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--ipo',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
         '--choose_worst',
         action='store_true',
         default=False,

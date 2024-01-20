@@ -27,7 +27,7 @@ from mcts_rl.configs.constants import COT_INSTRUCTIONS, ANSWER_HINT_COT
 
 __all__ = ['MCQDataset']
 
-DATA_DIR = "/mnt/data/yuxi/CSR"
+DATA_DIR = "/home/users/nus/e0672129/scratch/csr"
 
 
 class MCQDataset(RawDataset):
@@ -62,10 +62,16 @@ class CSRTrainDataset(MCQDataset):
 class SQATestDataset(MCQDataset):
     NAME: str = 'SQA/test'
     DTYPE: str = 'sqa'
-    SPLIT: str = 'test'
+    SPLIT: str = 'fulltest'
 
 
 class CSRTestDataset(MCQDataset):
     NAME: str = 'CSR/test'
     DTYPE: str = 'csr'
+    SPLIT: str = 'fulltest'
+
+
+class SciQTestDataset(MCQDataset):
+    NAME: str = 'SciQ/test'
+    DTYPE: str = 'sciq'
     SPLIT: str = 'test'

@@ -154,7 +154,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_code.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_xcode.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
@@ -289,8 +289,12 @@ class MCTSTrainer(TSRLTrainer):
             ref_worse_log_probs = ref_worse_sequence_log_probs[worse_seq_slice].sum(dim=-1)
             better_log_ratio = better_log_probs - ref_better_log_probs
             worse_log_ratio = worse_log_probs - ref_worse_log_probs
+            logits = better_log_ratio - worse_log_ratio
             
-            losses.append(-F.logsigmoid(self.scale_coeff * (better_log_ratio - worse_log_ratio)))
+            if self.args.ipo:
+                losses.append((logits - 1 / (2 * self.scale_coeff)) ** 2)
+            else:
+                losses.append(-F.logsigmoid(self.scale_coeff * logits))
             better_sample_rewards.append(self.scale_coeff * better_log_ratio.detach())
             worse_sample_rewards.append(self.scale_coeff * worse_log_ratio.detach())
             
