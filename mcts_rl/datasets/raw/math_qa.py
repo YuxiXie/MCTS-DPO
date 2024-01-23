@@ -43,15 +43,20 @@ class MathQADataset(RawDataset):
     def __init__(self) -> None:
         if self.TYPE == 'pot':
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
+            raw_arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
+            arithmo = []
+            for dt in raw_arithmo:
+                prompt = dt['question'] if 'question' in dt else dt['problem']
+                if all(not prompt.strip().startswith(x['question'].strip()) for x in gsm8k):
+                    arithmo.append(dt)
             for i, dt in enumerate(gsm8k):
                 gsm8k[i]['question'] = dt['question'] + ' Write a Python program to solve this.'
-            arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
-            self.data = gsm8k + list(random.sample(arithmo, min(len(gsm8k), len(arithmo))))
+            self.data = gsm8k #+ list(random.sample(arithmo, min(len(gsm8k), len(arithmo))))
         else:
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
             arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
-            self.data = gsm8k + math + list(random.sample(arithmo, min(len(gsm8k + math), len(arithmo))))
+            self.data = gsm8k + math #+ list(random.sample(arithmo, min(len(gsm8k + math), len(arithmo))))
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]

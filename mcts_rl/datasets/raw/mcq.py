@@ -75,3 +75,9 @@ class SciQTestDataset(MCQDataset):
     NAME: str = 'SciQ/test'
     DTYPE: str = 'sciq'
     SPLIT: str = 'test'
+
+
+class NLITestDataset(MCQDataset):
+    NAME: str = 'NLI/test'
+    DTYPE: str = 'nli'
+    SPLIT: str = 'test'

@@ -40,6 +40,7 @@ from mcts_rl.datasets.raw.mcq import (
     CSRTestDataset,
     CSRTrainDataset,
     SciQTestDataset,
+    NLITestDataset,
 )
 from mcts_rl.datasets.raw.math import (
     MATHDataset,
@@ -96,6 +97,10 @@ from mcts_rl.datasets.raw.aqua import (
     AQuAPoTTestDataset,
     AQuATestDataset,
 )
+from mcts_rl.datasets.raw.exam import (
+    ExamTestDataset,
+    ExamDataset,
+)
 
 
 __all__ = [
@@ -119,6 +124,7 @@ __all__ = [
     'CSRTestDataset',
     'CSRTrainDataset',
     'SciQTestDataset',
+    'NLITestDataset',
     'MATHDataset',
     'MATHTrainDataset',
     'MATHTestDataset',
@@ -158,4 +164,6 @@ __all__ = [
     'AQuADataset',
     'AQuAPoTTestDataset',
     'AQuATestDataset',
+    'ExamTestDataset',
+    'ExamDataset',
 ]
