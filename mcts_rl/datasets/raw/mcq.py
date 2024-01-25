@@ -35,16 +35,35 @@ class MCQDataset(RawDataset):
     DTYPE: ClassVar[str]
     
     def __init__(self, path: str | None = None) -> None:
-        self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_{self.DTYPE}_{self.SPLIT}.jsonl'))
+        if self.DTYPE == 'all':
+            self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_sqa_{self.SPLIT}.jsonl')) + \
+                jsonlines_load(os.path.join(DATA_DIR, f'mcq_csr_{self.SPLIT}.jsonl'))
+        else:
+            self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_{self.DTYPE}_{self.SPLIT}.jsonl'))
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
         question = data['question']
+        if self.DTYPE == 'all':
+            answer = f'The answer is ({data["answer"]}) {data["answer_content"]}'
+            return RawSample(input=question, answer=answer)
         return RawSample(input=question, final_answer=data['answer'], 
                          final_answer_content=data.get('answer_content', data['answer']))
 
     def __len__(self) -> int:
         return len(self.data)
+
+
+class MCQTrainDataset(MCQDataset):
+    NAME: str = 'MCQ/train'
+    DTYPE: str = 'all'
+    SPLIT: str = 'train'
+
+
+class MCQTestDataset(MCQDataset):
+    NAME: str = 'MCQ/test'
+    DTYPE: str = 'all'
+    SPLIT: str = 'test'
 
 
 class SQATrainDataset(MCQDataset):
