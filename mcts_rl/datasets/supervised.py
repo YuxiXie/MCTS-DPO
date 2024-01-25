@@ -59,7 +59,7 @@ class SupervisedDataset(TokenizedDataset):
             answer = raw_sample['answer']
             if len(raw_sample) == 2 and PROMPT_ASSISTANT.endswith('think step by step.'):
                 prompt = prompt.split(PROMPT_ASSISTANT)[0] + 'ANSWER: '
-            if raw_sample.get('final_answer', None) is not None:
+            if raw_sample.get('final_answer', None) is not None and '\nprint(' not in answer:
                 text = f'{prompt}{answer}\nThe answer is: {raw_sample["final_answer"]}' + self.tokenizer.eos_token
             else:
                 text = prompt + answer + self.tokenizer.eos_token
