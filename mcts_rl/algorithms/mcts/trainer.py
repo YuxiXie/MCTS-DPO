@@ -102,6 +102,7 @@ class MCTSTrainer(TSRLTrainer):
         seq, attn_msk = input_ids[0], attention_mask[0]
         gt_answer, solution = answer[0], prompt_only_batch['reasoning'][0]
         
+        self.mcts_searcher.search_config.use_code = ('\nprint(' in solution)
         self.mcts_searcher.search_algo.policy_model = self.actor_reference_model if self.args.offline else self.actor_model
         target_probs, Q_values, r_values, base_values, select_indexes = [], [], [], [], []
         cur_node = None
@@ -206,8 +207,8 @@ class MCTSTrainer(TSRLTrainer):
             text = self.tokenizer.decode(input_ids[-1], skip_special_tokens=True)
             if not text.startswith(PROMPT_BEGIN):
                 prediction = text.split(PROMPT_ASSISTANT)[-1]
-                if self.args.use_code:
-                    is_correct = math_equal(extract_answer(prediction, use_code=self.args.use_code), solution[1])
+                if self.mcts_searcher.search_config.use_code:
+                    is_correct = math_equal(extract_answer(prediction, use_code=self.mcts_searcher.search_config.use_code), solution[1])
                 elif not solution[0].strip():
                     is_correct = csr_equal(prediction, ('(' + solution[1].strip() + ')', ''))
                 else:
