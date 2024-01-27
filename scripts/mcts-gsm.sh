@@ -31,11 +31,11 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
-ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/mistral-arithmo/steps8522"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/gsm8k-mistral-longerstep/steps512"
+ACTOR_REF_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/gsm8k-diymistral"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/gsm8k-mistral-longerstep"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -121,13 +121,10 @@ exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
 export WANDB_MODE=online
 
-# export NCCL_P2P_DISABLE=1
-# export NCCL_IB_DISABLE=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0
-MASTER_PORT=23451
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
@@ -136,6 +133,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_datasets Arithmo/train \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
+	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
 	--max_length 512 \
 	--temperature 1.0 \
@@ -148,7 +146,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--per_device_ptx_batch_size 8 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
-	--gradient_accumulation_steps 32 \
+	--gradient_accumulation_steps 64 \
 	--actor_lr 1e-7 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
@@ -167,14 +165,14 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--force_terminating_on_depth_limit \
-	--max_new_tokens 64 \
-	--n_iters 5 \
+	--max_new_tokens 128 \
+	--n_iters 10 \
 	--depth_limit 3 \
 	--n_init_actions 4 \
 	--n_actions 2 \
 	--mcts_temperature 0.0
 
+# --force_terminating_on_depth_limit \
 # --no_self_eval
 # --no_consider_diversity
 # --per_device_eval_batch_size 1 \

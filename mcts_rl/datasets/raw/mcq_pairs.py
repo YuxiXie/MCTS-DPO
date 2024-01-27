@@ -27,7 +27,7 @@ __all__ = [
     'MCQPreferenceDataset',
 ]
 
-DATA_DIR = "/mnt/data/yuxi/reward-model"
+DATA_DIR = "/home/users/nus/e0672129/scratch/MCTS-DPO/rm-traindata/reward-model"
 
 
 class MCQPreferenceDataset(RawDataset):
@@ -66,7 +66,7 @@ class SQAPreferenceTestDataset(MCQPreferenceDataset):
 
 class CSRPreferenceTrainDataset(MCQPreferenceDataset):
     NAME: str = 'CSRPreference/train'
-    DTYPE: str = 'csr'
+    DTYPE: str = 'csr_all'
     SPLIT: str = 'train'
 
 

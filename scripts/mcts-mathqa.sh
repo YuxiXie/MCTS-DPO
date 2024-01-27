@@ -32,11 +32,11 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-mistral/len128_d3_3x2/steps256"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/mistral-d2-8x1/steps512"
 ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-diymistral/filtered_len64_d4_4x3"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/mistral-d4-5x3"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -164,10 +164,10 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 64 \
+	--max_new_tokens 32 \
 	--n_iters 5 \
 	--depth_limit 4 \
-	--n_init_actions 4 \
+	--n_init_actions 5 \
 	--n_actions 3 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0

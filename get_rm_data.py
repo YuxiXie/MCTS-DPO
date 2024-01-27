@@ -110,9 +110,9 @@ def ranked_predictions(fname):
     return data
 
 if __name__ == '__main__':
-    filepath = '/mnt/data/yuxi/mcts-rl/predictions/mcq/sqa/train-mistral-mj10-cot.jsonl'
+    filepath = '/home/users/nus/e0672129/scratch/MCTS-DPO/rm-traindata/csr-test-mistral-mj10.jsonl'
     dump_jsonl(
         ranked_predictions(filepath),
-        '/mnt/data/yuxi/reward-model/sqa_pairs_train.jsonl',
+        '/home/users/nus/e0672129/scratch/MCTS-DPO/rm-traindata/reward-model/csr_pairs_test.jsonl',
     )
     

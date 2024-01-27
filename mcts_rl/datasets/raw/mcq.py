@@ -40,6 +40,17 @@ class MCQDataset(RawDataset):
                 jsonlines_load(os.path.join(DATA_DIR, f'mcq_csr_{self.SPLIT}.jsonl'))
         else:
             self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_{self.DTYPE}_{self.SPLIT}.jsonl'))
+        
+        data = []
+        if self.SPLIT.count('test'):
+            for x in self.data:
+                if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa']: continue
+                data.append(x)
+        else:
+            for x in self.data:
+                if x['label'] not in ['openbook', 'csqa']: continue
+                data.append(x)
+        self.data = data
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]

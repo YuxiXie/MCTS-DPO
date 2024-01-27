@@ -27,6 +27,7 @@ from transformers import (
     PreTrainedModel,
     PreTrainedTokenizerBase,
 )
+from peft import PeftModelForCausalLM
 
 from mcts_rl.configs import (
     DEFAULT_BOS_TOKEN,
@@ -119,6 +120,16 @@ def resize_tokenizer_embedding(tokenizer: PreTrainedTokenizerBase, model: PreTra
     )
 
 
+def find_all_linear_names(model):
+    cls = torch.nn.Linear
+    lora_module_names = set()
+    for name, module in model.named_modules():
+        if isinstance(module, cls):
+            names = name.split('.')
+            lora_module_names.add(names[0] if len(names) == 1 else names[-1])
+    return list(lora_module_names)
+
+
 def load_pretrained_models(  # pylint: disable=too-many-arguments
     model_name_or_path: str | os.PathLike,
     /,
@@ -134,6 +145,12 @@ def load_pretrained_models(  # pylint: disable=too-many-arguments
     auto_model_kwargs: dict[str, Any] | None = None,
     auto_tokenizer_args: tuple[Any, ...] = (),
     auto_tokenizer_kwargs: dict[str, Any] | None = None,
+    lora_enable: bool = False,
+    lora_r: int = 64,
+    lora_alpha: int = 16,
+    lora_dropout: float = 0.05,
+    lora_weight_path: str = '',
+    lora_bias: str = 'none',
 ) -> tuple[PreTrainedModel, PreTrainedTokenizerBase]:
     """Load pre-trained model and tokenizer from a given path.
 
@@ -181,4 +198,17 @@ def load_pretrained_models(  # pylint: disable=too-many-arguments
         **auto_tokenizer_kwargs,
     )
     resize_tokenizer_embedding(tokenizer=tokenizer, model=model)
+    
+    if lora_enable and auto_model_type != PeftModelForCausalLM:
+        from peft import LoraConfig, get_peft_model
+        lora_config = LoraConfig(
+            r=lora_r,
+            lora_alpha=lora_alpha,
+            target_modules=['q_proj', 'v_proj'],    # find_all_linear_names(model),
+            lora_dropout=lora_dropout,
+            bias=lora_bias,
+            task_type="FEATURE_EXTRACTION" if auto_model_type == AutoModelForScore else "CAUSAL_LM",
+        )
+        model = get_peft_model(model, lora_config)
+    
     return model, tokenizer

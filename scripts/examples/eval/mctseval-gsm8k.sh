@@ -27,58 +27,14 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/llama2-d4-4x3/steps512"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/e1-bw-mathqa-mistral-online-mcts/steps512"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
 unset HOSTFILE
 ZERO_STAGE=2
 OFFLOAD="all"
-while [[ "$#" -gt 0 ]]; do
-	arg="$1"
-	shift
-	case "${arg}" in
-		--actor_model_name_or_path)
-			ACTOR_MODEL_NAME_OR_PATH="$1"
-			shift
-			;;
-		--actor_model_name_or_path=*)
-			ACTOR_MODEL_NAME_OR_PATH="${arg#*=}"
-			;;
-		--output_dir)
-			OUTPUT_DIR="$1"
-			shift
-			;;
-		--output_dir=*)
-			OUTPUT_DIR="${arg#*=}"
-			;;
-		--hostfile)
-			HOSTFILE="$1"
-			shift
-			;;
-		--hostfile=*)
-			HOSTFILE="${arg#*=}"
-			;;
-		--zero_stage)
-			ZERO_STAGE="$1"
-			shift
-			;;
-		--zero_stage=*)
-			ZERO_STAGE="${arg#*=}"
-			;;
-		--offload)
-			OFFLOAD="$1"
-			shift
-			;;
-		--offload=*)
-			OFFLOAD="${arg#*=}"
-			;;
-		*)
-			echo "Unknown parameter passed: '${arg}'" >&2
-			exit 1
-			;;
-	esac
-done
 
 if [[ -z "${REWARD_CRITIC_MODEL_NAME_OR_PATH+x}" ]]; then
 	REWARD_CRITIC_MODEL_NAME_OR_PATH="${REWARD_MODEL_NAME_OR_PATH}"
@@ -162,4 +118,5 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/mathqa/predictions/gsm8k-llama2-d4-4x3-s512.jsonl
+	--eval_mode \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/e1-bw-mathqa-mistral-online-mcts-s512.jsonl

@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#PBS -N RLHF-MATH
+#PBS -l select=1:ngpus=2:ncpus=64:mem=500gb
+#PBS -q normal
+#PBS -l walltime=2:00:00
+#PBS -j oe
+#PBS -o log
+## change next line to correct project code:
+#PBS -P 11003552
+
+# Enter the folder where the job script located, if failed, then return the error code.
+PBS_O_WORKDIR="/home/users/nus/e0672129/MCTS-DPO"
+cd $PBS_O_WORKDIR || exit $?
+
+# If no log folder, then create one
+[ -d log ] || mkdir log
+
+# Load conda environment
+# module load anaconda3/2022.10
+module load miniforge3/23.10
+
+# Create environment
+conda activate safe-rlhf-copy
+
+nvidia-smi
+# pip install wandb --upgrade
+## Run experiment
+
+# bash scripts/testmcts.sh
+# bash scripts/mctseval.sh
+# bash scripts/evalmcts.sh
+# bash scripts/examples/eval/mctseval-gsm8k.sh
+
+# bash scripts/examples/mcts_mathqa.sh
+# bash scripts/examples/mcts-code3.sh
+
+# bash scripts/examples/mcts_mathqa2.sh
+# bash scripts/examples/mcts_code.sh
+# bash scripts/examples/mcts_code3.sh
+# bash scripts/examples/mcts_sqa.sh
+# bash scripts/examples/mcts-mathqa.sh
+# bash scripts/examples/mcts-mathqa5.sh
+# bash scripts/examples/mcts-code5.sh
+# bash scripts/examples/mcts_mathqa2.sh
+# bash scripts/examples/mcts_csr.sh
+# python run_parallel.py scripts/examples/mcts_mathqa.sh scripts/examples/mcts_mathqa2.sh
+# python run_parallel.py scripts/examples/mcts-csr.sh scripts/examples/mcts-csr2.sh
+# python run_parallel.py scripts/examples/mcts_csr.sh scripts/examples/mcts_sqa.sh
+# python run_parallel.py scripts/examples/mcts_sqa2.sh scripts/examples/mcts_csr2.sh
+# python run_parallel.py scripts/examples/mcts_code.sh scripts/examples/mcts_sqa.sh
+# python run_parallel.py scripts/examples/mcts-code3.sh scripts/examples/mcts-code2.sh
+# python run_parallel.py scripts/examples/mcts-mathqa4.sh scripts/examples/mcts-code4.sh
+
+# bash scripts/sft.sh
+# bash scripts/mcts-math.sh
+# bash scripts/mcts-mathqa.sh
+# bash scripts/mcts-mathqa2.sh
+# bash /home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-mistral/len100_d3_4x2/script.sh
+# bash scripts/llama2/mcts-mathqa.sh
+# bash scripts/examples/eval/mctseval_gsm8k.sh
+# bash scripts/examples/eval/mctseval_gsm8k4.sh
+# bash scripts/examples/eval/mctseval-gsm8k.sh
+# bash scripts/examples/eval/mctseval_gsm8k_code.sh
+# bash scripts/examples/eval/mctseval-gsm8k-code.sh
+# bash scripts/examples/eval/mctseval_sciq.sh
+# bash scripts/examples/eval/mctseval-nli.sh
+# bash scripts/examples/eval/mctseval_sqa.sh
+# bash scripts/examples/eval/mctseval-csr.sh
+# bash scripts/examples/eval/mctseval-csr2.sh
+# bash scripts/examples/eval/mctseval_nli.sh
+# bash scripts/examples/eval/mctseval_csr.sh
+# bash scripts/examples/eval/mctseval_aqua_code.sh
+# bash scripts/examples/eval/mctseval_aqua.sh
+bash scripts/examples/eval/mctseval-math2.sh
+# bash scripts/examples/eval/mctseval-exam.sh
+
+# bash scripts/mcts.sh
+# bash scripts/mcts-mcq.sh
+# bash scripts/mcts-mcq2.sh
+# bash scripts/llama2/mcts-mcq.sh
+
+# bash scripts/mcts-code.sh
+# bash scripts/mcts-code2.sh
+# bash scripts/llama2/mcts-code.sh
+
+# bash scripts/reward-model.sh
+# bash scripts/ppo.sh
+
+# bash scripts/sft.sh
+# bash scripts/sft-deepspeed.sh

@@ -30,7 +30,7 @@ __all__ = [
     'GSM8KPoTTestDataset',
 ]
 
-DATA_DIR = "/mnt/data/yuxi/math/gsm8k"
+DATA_DIR = "/home/users/nus/e0672129/scratch/gsm8k"
 
 
 class GSM8KDataset(RawDataset):

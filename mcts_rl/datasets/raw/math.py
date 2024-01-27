@@ -28,7 +28,7 @@ __all__ = [
     'MATHTestDataset',
 ]
 
-DATA_DIR = "/mnt/data/yuxi/math/MATH"
+DATA_DIR = "/home/users/nus/e0672129/scratch/math"
 
 
 class MATHDataset(RawDataset):

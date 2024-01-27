@@ -29,11 +29,12 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
 # MODEL_NAME_OR_PATH="facebook/opt-2.7b"
 # MODEL_NAME_OR_PATH="meta-llama/Llama-2-7b-hf"
-MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps8403"
+# ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
+MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps16806"
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="optimizer"
+OFFLOAD="all"
 while [[ "$#" -gt 0 ]]; do
 	arg="$1"
 	shift
@@ -118,7 +119,6 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0,1,2,3
-MASTER_PORT=3345
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \

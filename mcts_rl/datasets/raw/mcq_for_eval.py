@@ -28,7 +28,7 @@ __all__ = [
     'MCQEvalDataset',
 ]
 
-DATA_DIR = "/mnt/data/yuxi/reward-model"
+DATA_DIR = "/home/users/nus/e0672129/scratch/MCTS-DPO/rm-traindata/reward-model"
 
 
 class MCQEvalDataset(RawDataset):
@@ -38,7 +38,7 @@ class MCQEvalDataset(RawDataset):
     def __init__(self, path: str | None = None) -> None:
         data = jsonlines_load(os.path.join(DATA_DIR, f'{self.DTYPE}_pairs_{self.SPLIT}.jsonl'))
         self.data = []
-        for dt in data:
+        for dt in data[:1086]:
             prompt = dt['prompt'].replace('QUESTION: ', '')
             for i in range(2):
                 response = f'\n{dt[f"response_{i}"]}'
@@ -78,7 +78,7 @@ class SQAEvalTestDataset(MCQEvalDataset):
 
 class CSREvalTrainDataset(MCQEvalDataset):
     NAME: str = 'CSREval/train'
-    DTYPE: str = 'csr'
+    DTYPE: str = 'csr_all'
     SPLIT: str = 'train'
 
 
@@ -90,11 +90,11 @@ class CSREvalTestDataset(MCQEvalDataset):
 
 class GSMEvalTrainDataset(MCQEvalDataset):
     NAME: str = 'GSMEval/train'
-    DTYPE: str = 'gsm'
+    DTYPE: str = 'gsm_all'
     SPLIT: str = 'train'
 
 
 class GSMEvalTestDataset(MCQEvalDataset):
     NAME: str = 'GSMEval/test'
     DTYPE: str = 'gsm'
-    SPLIT: str = 'test'
+    SPLIT: str = 'train'

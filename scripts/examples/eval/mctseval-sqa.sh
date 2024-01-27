@@ -27,58 +27,15 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/mistral-d4-4x3/steps1536"
+# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps512"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/sqa/ipo-mistral-online-mcts/steps256"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
 unset HOSTFILE
 ZERO_STAGE=2
 OFFLOAD="all"
-while [[ "$#" -gt 0 ]]; do
-	arg="$1"
-	shift
-	case "${arg}" in
-		--actor_model_name_or_path)
-			ACTOR_MODEL_NAME_OR_PATH="$1"
-			shift
-			;;
-		--actor_model_name_or_path=*)
-			ACTOR_MODEL_NAME_OR_PATH="${arg#*=}"
-			;;
-		--output_dir)
-			OUTPUT_DIR="$1"
-			shift
-			;;
-		--output_dir=*)
-			OUTPUT_DIR="${arg#*=}"
-			;;
-		--hostfile)
-			HOSTFILE="$1"
-			shift
-			;;
-		--hostfile=*)
-			HOSTFILE="${arg#*=}"
-			;;
-		--zero_stage)
-			ZERO_STAGE="$1"
-			shift
-			;;
-		--zero_stage=*)
-			ZERO_STAGE="${arg#*=}"
-			;;
-		--offload)
-			OFFLOAD="$1"
-			shift
-			;;
-		--offload=*)
-			OFFLOAD="${arg#*=}"
-			;;
-		*)
-			echo "Unknown parameter passed: '${arg}'" >&2
-			exit 1
-			;;
-	esac
-done
 
 if [[ -z "${REWARD_CRITIC_MODEL_NAME_OR_PATH+x}" ]]; then
 	REWARD_CRITIC_MODEL_NAME_OR_PATH="${REWARD_MODEL_NAME_OR_PATH}"
@@ -120,6 +77,8 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps1024"
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
@@ -163,4 +122,234 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/predictions/mistral-d4-4x3-s1536.jsonl
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-1024.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps1536"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets SQA/train \
+	--eval_datasets SQA/test \
+	--use_mcq \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-SQA \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-1536.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps2048"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets SQA/train \
+	--eval_datasets SQA/test \
+	--use_mcq \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-SQA \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-2048.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps2560"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets SQA/train \
+	--eval_datasets SQA/test \
+	--use_mcq \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-SQA \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-2560.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps3072"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets SQA/train \
+	--eval_datasets SQA/test \
+	--use_mcq \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-SQA \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-3072.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps3584"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets SQA/train \
+	--eval_datasets SQA/test \
+	--use_mcq \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-SQA \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mcq/predictions/sc-3584.jsonl

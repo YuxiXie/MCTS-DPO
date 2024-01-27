@@ -414,8 +414,8 @@ class StepLMConfig(SearchConfig):
                 print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
-                if self.n_actions < 2 or parent_depth > 1 or eval_correct_score <= 0 or not self.use_mcq:
-                    score += eval_correct_score
+                # if self.n_actions < 2 or parent_depth > 1 or eval_correct_score <= 0 or not self.use_mcq:
+                score += eval_correct_score
 
             outputs.append((score, base_rewards, is_terminal))
         return outputs

@@ -82,6 +82,12 @@ class SupervisedTrainer(TrainerBase):
             trust_remote_code=self.args.trust_remote_code,
             auto_model_kwargs=self.extra_model_kwargs,
             auto_tokenizer_kwargs=self.extra_tokenizer_kwargs,
+            lora_enable=self.args.lora_enable,
+            lora_r=self.args.lora_r,
+            lora_alpha=self.args.lora_alpha,
+            lora_dropout=self.args.lora_dropout,
+            lora_weight_path=self.args.lora_weight_path,
+            lora_bias=self.args.lora_bias,
         )
 
     def init_datasets(self) -> None:
@@ -199,9 +205,9 @@ class SupervisedTrainer(TrainerBase):
             disable=not is_main_process(),
         )
 
-        if self.args.need_eval:
-            self.logger.print('\n***** Evaluating at the beginning *****')
-            self.logger.log(self.eval(), step=0)
+        # if self.args.need_eval and (epochs_trained + steps_trained_in_current_epoch) == 0:
+        #     self.logger.print('\n***** Evaluating at the beginning *****')
+        #     self.logger.log(self.eval(), step=0)
 
         for epoch in range(self.args.epochs):
             if epoch < epochs_trained: continue

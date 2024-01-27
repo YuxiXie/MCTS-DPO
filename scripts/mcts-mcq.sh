@@ -28,15 +28,16 @@ export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
 # ACTOR_MODEL_NAME_OR_PATH="PKU-Alignment/alpaca-7b-reproduced"
-ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+# ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa-noptx-instance/steps512"
 # ACTOR_MODEL_NAME_OR_PATH="facebook/opt-2.7b"
-# ACTOR_MODEL_NAME_OR_PATH="/ssd1/yuxi/MCTS/sft/sft-opt-2.7b"
-ACTOR_REF_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/mistral-d2-8x1/steps1536"
+ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/mcq/sqa/len64_d3_4x2"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/sqa/mistral-d2-8x1"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -125,14 +126,16 @@ export WANDB_MODE=online
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=0
+gpu_vis=1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets SQA/train \
 	--ptx_datasets ArithmoMCQ/train \
+	--use_mcq \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
+	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
 	--max_length 512 \
 	--temperature 1.0 \
@@ -141,11 +144,11 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
-	--save_interval 512 \
-	--per_device_ptx_batch_size 8 \
+	--save_interval 256 \
+	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
-	--gradient_accumulation_steps 64 \
+	--gradient_accumulation_steps 32 \
 	--actor_lr 1e-7 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
@@ -164,11 +167,12 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 64 \
+	--max_new_tokens 512 \
 	--n_iters 5 \
-	--depth_limit 3 \
-	--n_init_actions 4 \
-	--n_actions 2 \
+	--depth_limit 2 \
+	--n_init_actions 8 \
+	--n_actions 1 \
+	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
 # --per_device_eval_batch_size 1 \

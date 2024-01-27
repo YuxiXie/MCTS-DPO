@@ -170,6 +170,36 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help='Whether to use tf32 mix precision.',
     )
+    training_parser.add_argument(
+        '--lora_enable',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
+        '--lora_r',
+        type=int,
+        default=64,
+    )
+    training_parser.add_argument(
+        '--lora_alpha',
+        type=int,
+        default=16,
+    )
+    training_parser.add_argument(
+        '--lora_dropout',
+        type=float,
+        default=.05,
+    )
+    training_parser.add_argument(
+        '--lora_weight_path',
+        type=str,
+        default='',
+    )
+    training_parser.add_argument(
+        '--lora_bias',
+        type=str,
+        default='none',
+    )
 
     # Evaluation
     evaluation_parser = parser.add_argument_group('evaluation')

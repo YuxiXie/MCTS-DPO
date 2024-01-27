@@ -16,11 +16,12 @@
 
 from __future__ import annotations
 
+import os
 import regex
 from typing import ClassVar
 
 from datasets import load_dataset
-from mcts_rl.datasets.base import RawDataset, RawSample
+from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
 
 
 __all__ = [
@@ -32,6 +33,7 @@ __all__ = [
     'ArithmoCodeTrainDataset',
 ]
 
+DATA_DIR = '/home/users/nus/e0672129/scratch/arithmo'
 
 class ArithmoDataset(RawDataset):
     SPLIT: ClassVar[str]
@@ -39,7 +41,10 @@ class ArithmoDataset(RawDataset):
     TYPE: ClassVar[str]
 
     def __init__(self, path: str | None = None) -> None:
-        self.data = load_dataset(path or self.PATH, split=self.SPLIT)
+        try:
+            self.data = load_dataset(path or self.PATH, split=self.SPLIT)
+        except:
+            self.data = jsonlines_load(os.path.join(DATA_DIR, f'{self.SPLIT}.jsonl'))
         if self.TYPE == 'math':
             self.data = [dt for dt in self.data if ' answer is' in dt['answer']]
         elif self.TYPE == 'mcq':

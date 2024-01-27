@@ -32,7 +32,7 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/math-reasoning/based-models/Arithmo-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="lmsys/vicuna-7b-v1.5"
 # ACTOR_MODEL_NAME_OR_PATH="/home/yuxi/Models/MCTS/sft-opt-2.7b"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-diymistral/steps512"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -127,13 +127,13 @@ export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=0
-MASTER_PORT=23401
 
 # deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets GSM8K/train \
-	--eval_datasets GSM8K/test \
+	--eval_datasets GSM8KCode/test \
+	--use_code \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
@@ -171,4 +171,4 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/mathqa/mathqa-diymistral/predictions/mcts-s512.jsonl
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/predictions/gsm-pot.jsonl
