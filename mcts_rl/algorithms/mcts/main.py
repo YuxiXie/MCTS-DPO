@@ -301,6 +301,11 @@ def parse_arguments() -> argparse.Namespace:
         default=None,
         help='Whether to use tf32 mix precision.',
     )
+    training_parser.add_argument(
+        '--iteration_interval',
+        type=int,
+        default=32,
+    )
 
     # Generation Config
     generation_parser = parser.add_argument_group('generation')

@@ -31,7 +31,7 @@ ACTOR_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/sqa/obqa"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/sqa/obqa-len"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -97,7 +97,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
-	--gradient_accumulation_steps 64 \
+	--gradient_accumulation_steps 32 \
 	--actor_lr 1e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
@@ -116,10 +116,10 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 64 \
+	--max_new_tokens 32 \
 	--n_iters 5 \
 	--depth_limit 3 \
-	--n_init_actions 3 \
+	--n_init_actions 4 \
 	--n_actions 3 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0

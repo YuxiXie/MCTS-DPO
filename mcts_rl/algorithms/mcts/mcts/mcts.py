@@ -132,6 +132,8 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         self.root: Optional[MCTSNode] = None
         self.disable_tqdm = args.disable_tqdm
         self.consider_diversity = args.consider_diversity
+        
+        self.policy_model = None
 
     def _get_simulated_pi(self, cur_node: MCTSNode, return_selection=False) -> list[float]:
         """

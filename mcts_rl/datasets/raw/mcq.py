@@ -44,7 +44,7 @@ class MCQDataset(RawDataset):
         data = []
         if self.SPLIT.count('test'):
             for x in self.data:
-                if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa']: continue
+                if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa', 'openbook']: continue
                 data.append(x)
         else:
             for x in self.data:

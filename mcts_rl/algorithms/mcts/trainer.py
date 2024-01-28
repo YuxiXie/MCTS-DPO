@@ -103,7 +103,8 @@ class MCTSTrainer(TSRLTrainer):
         gt_answer, solution = answer[0], prompt_only_batch['reasoning'][0]
         
         self.mcts_searcher.search_config.use_code = ('\nprint(' in solution)
-        self.mcts_searcher.search_algo.policy_model = self.actor_reference_model if self.args.offline else self.actor_model
+        if self.mcts_searcher.search_algo.policy_model is None or self.global_step % self.args.iteration_interval == 0:
+            self.mcts_searcher.search_algo.policy_model = self.actor_reference_model if self.args.offline else self.actor_model
         target_probs, Q_values, r_values, base_values, select_indexes = [], [], [], [], []
         cur_node = None
         while cur_node is None or not cur_node.is_terminal:

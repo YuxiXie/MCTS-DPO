@@ -431,18 +431,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
     
     def train(self) -> None:
         """Train the model."""
-        self.logger.print('***** Running training *****')
-        
-        steps_trained_in_current_epoch, epochs_trained = 0, 0
-        if self.args.resume_from_ckpt is not None:
-            if self.use_ptx:
-                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
-            else:
-                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps
-            self.global_step = steps_trained_in_current_epoch
-            epochs_trained = steps_trained_in_current_epoch // len(self.prompt_only_dataloader)
-            steps_trained_in_current_epoch %= len(self.prompt_only_dataloader)
-
+        self.logger.print('***** Running training *****')        
         progress_bar = tqdm(
             total=self.args.total_training_steps,
             desc=f'Training 1/{self.args.epochs} epoch',
@@ -450,6 +439,19 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             leave=True,
             disable=not is_main_process(),
         )
+        
+        steps_trained_in_current_epoch, epochs_trained = 0, 0
+        if self.args.resume_from_ckpt is not None:
+            if self.use_ptx:
+                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps // 2
+            else:
+                steps_trained_in_current_epoch = self.actor_model.global_steps * self.args.gradient_accumulation_steps
+            if steps_trained_in_current_epoch > 0:
+                progress_bar.update(steps_trained_in_current_epoch)
+            self.global_step = steps_trained_in_current_epoch
+            epochs_trained = steps_trained_in_current_epoch // len(self.prompt_only_dataloader)
+            steps_trained_in_current_epoch %= len(self.prompt_only_dataloader)
+            steps_trained_in_current_epoch += 64    # avoid duplication
 
         if self.args.need_eval and self.eval_dataloader is not None:
             self.logger.print('\n***** Evaluating at the beginning *****')
