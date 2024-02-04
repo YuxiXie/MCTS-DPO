@@ -286,8 +286,8 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             lr_scheduler=lr_scheduler,
             config=ds_config,
         )
-        if self.args.resume_from_ckpt is not None:
-            deepspeed_load_checkpoint(engine, self.args.resume_from_ckpt)
+        # if self.args.resume_from_ckpt is not None:
+        #     deepspeed_load_checkpoint(engine, self.args.resume_from_ckpt)
         return engine
 
     def _init_eval_engine(
@@ -451,6 +451,10 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             self.global_step = steps_trained_in_current_epoch
             epochs_trained = steps_trained_in_current_epoch // len(self.prompt_only_dataloader)
             steps_trained_in_current_epoch %= len(self.prompt_only_dataloader)
+            if not steps_trained_in_current_epoch:
+                _step = int(self.args.resume_from_ckpt.split('/')[-1].replace('steps', ''))
+                steps_trained_in_current_epoch = _step
+                progress_bar.update(steps_trained_in_current_epoch)
             steps_trained_in_current_epoch += 64    # avoid duplication
 
         if self.args.need_eval and self.eval_dataloader is not None:
@@ -560,6 +564,9 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
         for batch in eval_dataloader:
             idx += 1
             if idx < count: continue
+            if '/mj2/' in outputfile:
+                if idx > 400:
+                    break
             batch = to_device(batch, self.args.device)
             if '/mcts/' in outputfile:
                 rl_batch = self.split_tsrl_micro_batches(batch)[0]
