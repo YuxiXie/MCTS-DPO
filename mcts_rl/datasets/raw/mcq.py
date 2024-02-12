@@ -36,8 +36,9 @@ class MCQDataset(RawDataset):
     
     def __init__(self, path: str | None = None) -> None:
         if self.DTYPE == 'all':
-            self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_sqa_{self.SPLIT}.jsonl')) + \
-                jsonlines_load(os.path.join(DATA_DIR, f'mcq_csr_{self.SPLIT}.jsonl'))
+            # self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_sqa_{self.SPLIT}.jsonl')) + \
+            #     jsonlines_load(os.path.join(DATA_DIR, f'mcq_csr_{self.SPLIT}.jsonl'))
+            self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_{self.SPLIT}.jsonl'))
         else:
             self.data = jsonlines_load(os.path.join(DATA_DIR, f'mcq_{self.DTYPE}_{self.SPLIT}.jsonl'))
         
@@ -46,18 +47,18 @@ class MCQDataset(RawDataset):
             for x in self.data:
                 if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa', 'openbook']: continue
                 data.append(x)
-        else:
-            for x in self.data:
-                if x['label'] not in ['openbook', 'csqa']: continue
-                data.append(x)
-        self.data = data
+        # else:
+        #     for x in self.data:
+        #         if x['label'] not in ['openbook', 'csqa']: continue
+        #         data.append(x)
+        # self.data = data
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
         question = data['question']
-        if self.DTYPE == 'all':
-            answer = f'The answer is ({data["answer"]}) {data["answer_content"]}'
-            return RawSample(input=question, answer=answer)
+        # if self.DTYPE == 'all':
+        #     answer = f'The answer is ({data["answer"]}) {data["answer_content"]}'
+        #     return RawSample(input=question, answer=answer)
         return RawSample(input=question, final_answer=data['answer'], 
                          final_answer_content=data.get('answer_content', data['answer']))
 

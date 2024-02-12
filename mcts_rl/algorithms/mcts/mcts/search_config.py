@@ -145,7 +145,7 @@ class StepLMConfig(SearchConfig):
         unique_text_list, sequences_list = [], []
         prompt = self.base_tokenizer.decode(input_ids, skip_special_tokens=True)
         for _ in trange(n_actions, disable=self.disable_tqdm, desc='Expand: action generation', leave=False):
-            if True or unique_text_list or prompt.startswith(PROMPT_BEGIN):
+            if unique_text_list or prompt.startswith(PROMPT_BEGIN):
                 sequences = policy_model.module.generate(
                     input_ids=input_ids.unsqueeze(0),
                     attention_mask=attention_mask.unsqueeze(0),
@@ -312,7 +312,7 @@ class StepLMConfig(SearchConfig):
                     )
                     conf = torch.sigmoid(self.reward_model(
                         eval_inputs['input_ids'].to(device), 
-                        attention_mask=eval_inputs['attention_mask'].to(device)
+                        attention_mask=eval_inputs['attention_mask'].to(device),
                     ).end_scores.squeeze(dim=-1)[0]).detach().item()
                 else:
                     eval_inputs = self.base_tokenizer(
@@ -414,7 +414,7 @@ class StepLMConfig(SearchConfig):
                 print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
-                if self.n_actions < 2 or parent_depth > 1 or eval_correct_score <= 0 or not self.use_mcq:
+                if self.n_actions < 2 or parent_depth > 0 or eval_correct_score <= 0 or not self.use_mcq:
                     score += eval_correct_score
 
             outputs.append((score, base_rewards, is_terminal))
