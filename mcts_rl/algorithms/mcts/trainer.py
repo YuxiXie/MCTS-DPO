@@ -76,6 +76,8 @@ class MCTSTrainer(TSRLTrainer):
             use_code=self.args.use_code,
             use_mcq=self.args.use_mcq,
             eval_mode=self.args.eval_mode,
+            temperature=self.args.temperature,
+            init_temperature=self.args.init_temperature,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -156,7 +158,7 @@ class MCTSTrainer(TSRLTrainer):
         cur_node: MCTSNode,
         solution: tuple = None,
     ) -> dict[str, Any]:
-        exec('''import pickle\nwith open('mcts_rst_prob.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
+        exec('''import pickle\nwith open('mcts_rst_filter.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
         while cur_node.depth:
             cur_node = cur_node.parent
@@ -175,7 +177,7 @@ class MCTSTrainer(TSRLTrainer):
             # record the scores: \pi (visiting count), Q values, advantages (relative values), base/init (absolute) values
             scores = [(q, s, r, bv) for s, q, r, bv in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id],)]
             _candidates = [[x[1], scores[x[0]]] for x in sorted(enumerate(next_completions), key=lambda x: scores[x[0]])]
-            init_values = [x[1][1] for x in _candidates]
+            init_values = [x[1][0] for x in _candidates]
             _candidates = [x[0] for x in _candidates]
             prompts.append(prompt)
             candidates.append(_candidates)
@@ -245,6 +247,8 @@ class MCTSTrainer(TSRLTrainer):
         for sample_id in range(n_sample):
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
+            init_values = init_value_list[sample_id]
+            if init_values[-1] <= 0 or init_values[0] >= 1: continue
             
             n_output = input_ids.size(0)
             if n_output < 2: continue

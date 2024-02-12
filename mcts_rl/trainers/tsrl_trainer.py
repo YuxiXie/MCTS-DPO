@@ -491,7 +491,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 self.set_train()
                 for _ in range(self.args.update_iters):
                     for rl_batch, ptx_batch in zip(rl_batches, ptx_batches):
-                        if not check_available(rl_batch, max_tokens=self.args.max_length): continue
+                        if not check_available(rl_batch, max_tokens=self.args.max_length, to_filter=self.args.filter): continue
                         rl_info = self.tsrl_step(**rl_batch)
                         if rl_info is None or not len(rl_info): continue
                         torch.cuda.empty_cache()

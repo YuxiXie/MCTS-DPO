@@ -283,11 +283,21 @@ def split_prompt_response(
     return tuple(map(list, zip(*map(split_fn, texts))))
 
 
-def check_available(rl_batch, max_tokens=512, eos_token_id=2):
+def check_diversity(values):
+    for scores in values[::-1]:
+        if scores[-1] - scores[0] > .5:
+            return True
+    return False
+
+
+def check_available(rl_batch, max_tokens=512, eos_token_id=2, to_filter=False):
     if len(rl_batch) < 3:
         return False
     if 'input_ids' in rl_batch:
         return len(rl_batch['input_ids']) >= 2 and eos_token_id in rl_batch['input_ids'][-1].tolist()
+    if to_filter:
+        return check_diversity(rl_batch['init_value_list'])
+        # return rl_batch.get('prediction', [False])[-1]
     input_ids_list = rl_batch['input_ids_list']
     counts = [
         input_ids.size(0) >= 2 and input_ids.size(-1) <= max_tokens and (input_ids[0] != input_ids[1]).nonzero().size(0)

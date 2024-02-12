@@ -119,6 +119,11 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--filter',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
         '--norm_prob',
         action='store_true',
         default=False,
@@ -324,6 +329,11 @@ def parse_arguments() -> argparse.Namespace:
         type=float,
         default=1.0,
         help='The value used to module the next token probabilities.',
+    )
+    generation_parser.add_argument(
+        '--init_temperature',
+        type=float,
+        default=1.0,
     )
     generation_parser.add_argument(
         '--top_p',
