@@ -155,8 +155,8 @@ class DPOTrainer(SupervisedTrainer):
             assert 0 <= diverge_index <= better_end_index, 'diverge index is out of range!'
             assert 0 <= diverge_index <= worse_end_index, 'diverge index is out of range!'
 
-            better_seq_slice = slice(diverge_index, better_end_index + 1)
-            worse_seq_slice = slice(diverge_index, worse_end_index + 1)
+            better_seq_slice = slice(diverge_index - 1, better_end_index)
+            worse_seq_slice = slice(diverge_index - 1, worse_end_index)
 
             # size = ()
             better_log_probs = better_sequence_log_probs[i, better_seq_slice].sum(dim=-1)

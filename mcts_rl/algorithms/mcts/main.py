@@ -119,6 +119,11 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--save_mcts_data',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
         '--filter',
         action='store_true',
         default=False,
@@ -366,6 +371,11 @@ def parse_arguments() -> argparse.Namespace:
     )
     mcts_parser.add_argument(
         '--post',
+        action='store_true',
+        default=False,
+    )
+    mcts_parser.add_argument(
+        '--reverse',
         action='store_true',
         default=False,
     )

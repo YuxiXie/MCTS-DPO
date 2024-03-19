@@ -128,12 +128,24 @@ REWARD_EVAL_PROMPT = '''
 {input}ANSWER:{prompt}{eos_token}
 '''
 
+# HINTED_EVAL_PROMPT = '''
+# QUESTION: Evaluate if the proposed solution is logically heading in the correct direction based on the example solution.
+
+# {input}EXAMPLE SOLUTION: {solution}
+
+# PROPOSED SOLUTION:{prompt}
+
+# ANSWER CHOICES: (A) incorrect (B) correct
+
+# ANSWER: The answer is
+# '''.strip()
+
 HINTED_EVAL_PROMPT = '''
-{input}EXAMPLE ANSWER: {solution}
+{input}EXAMPLE SOLUTION: {solution}
 
 PROPOSED SOLUTION:{prompt}
 
-QUESTION: Evaluate if the proposed solution is logically heading in the correct direction based on the example answer.
+Evaluate if the proposed solution is logically heading in the correct direction like the example solution.
 Answer Choices: (A) incorrect (B) correct
 
 ANSWER: The answer is
@@ -227,6 +239,17 @@ SQA_PROMPT = '\n\n'.join([
 ]) + '\n\n'
 
 
+GSM8K_EXPX = [
+    {
+        'Q': 'Mark buys a loaf of bread for $4.20 and some cheese for $2.05. He gives the cashier $7.00. If the cashier only has 1 quarter and 1 dime in his till, plus a bunch of nickels, how many nickels does Mark get in his change?',
+        'A': 'Mark needs $5.25 in change because 7 - 4.2 - 2.05 = 5.25\nThere is $0.45 in quarters because 1 x .45 = .45\nThere is $.10 worth orf nickels in changes because 5.4 –- .45 –/ .1 = 4.0\nThere were 8 nickels because 5 / .5= 8\nThereare3More nickelastwo, because 8 - = 3 Owed?\nOdd and ends:\n$.5in dimesBecause1x\n4.1 correct owed ($1.0) (x-.45)(x/.10)(X-.o1)\nThe answer is 3',
+    },
+    {
+        'Q': 'The above answer is wrong, please provide a correct solution.',
+        'A': 'Mark needs $5.25 in change because 7 - 4.2 - 2.05 = 5.25\nThere is $0.45 in quarters because 1 x .45 = .45\nThere is $.10 worth orf nickels in changes because 5.4 –- .45 –/ .1 = 4.0\nThere were 8 nickels because 5 / .5= 8\nThe answer is 8',
+    }
+]
+
 GSM8K_EXP = [
     {
         'Q': 'There are 15 trees in the grove. Grove workers will plant trees in the grove today. After they are done, there will be 21 trees. How many trees did the grove workers plant today?',
@@ -264,7 +287,7 @@ GSM8K_EXP = [
 
 GSM8K_PROMPT = '\n\n'.join([
     PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN
-    for exp in GSM8K_EXP
+    for exp in GSM8K_EXPX # GSM8K_EXP[:2]
 ]) + '\n\n'
 
 MATH_EXP = [

@@ -94,6 +94,7 @@ from mcts_rl.datasets.raw.math_qa import (
     MathQACodeTestDataset,
     MathQACodeTrainDataset,
     MathQAAllTrainDataset,
+    MathQAAllTestDataset,
 )
 from mcts_rl.datasets.raw.aqua import (
     AQuADataset,
@@ -165,6 +166,7 @@ __all__ = [
     'MathQADataset',
     'MathQATestDataset',
     'MathQATrainDataset',
+    'MathQAAllTestDataset',
     'MathQACodeTestDataset',
     'MathQACodeTrainDataset',
     'AQuADataset',

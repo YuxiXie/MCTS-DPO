@@ -286,8 +286,8 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             lr_scheduler=lr_scheduler,
             config=ds_config,
         )
-        # if self.args.resume_from_ckpt is not None:
-        #     deepspeed_load_checkpoint(engine, self.args.resume_from_ckpt)
+        if self.args.resume_from_ckpt is not None:
+            deepspeed_load_checkpoint(engine, self.args.resume_from_ckpt)
         return engine
 
     def _init_eval_engine(
@@ -507,6 +507,18 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         )
                         progress_bar.update(1)
                         
+                        if self.args.save_mcts_data:
+                            prompt = self.tokenizer.batch_decode(rl_batch['prompts_list'][0], skip_special_tokens=True)
+                            generated = [self.tokenizer.batch_decode(seq, skip_special_tokens=True) for seq in rl_batch['input_ids_list']]
+                            init_values = [x for x in rl_batch['init_value_list']]
+                            generated = [[text[len(prompt[0]) :] for text in text_list] for i, text_list in enumerate(generated)]
+                            with jsonlines.open(os.path.join(self.args.output_dir, 'mcts_rst_data.jsonl'), mode='a') as writer:
+                                writer.write_all([{
+                                    'prompt': prompt, 
+                                    'generated': generated,
+                                    'init_values': init_values,
+                                }])
+                        
                         if self.global_step % self.args.save_interval == 0:
                             self.logger.print(f'Saving checkpoint at step {self.global_step} ...')
                             self.actor_model.save_checkpoint(
@@ -622,8 +634,10 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             dist.barrier()
 
             prompt = self.tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True)
+            init_values = None
             if '/mcts/' in outputfile:
                 generated = [self.tokenizer.batch_decode(seq, skip_special_tokens=True) for seq in rl_batch['input_ids_list']]
+                init_values = [x for x in rl_batch['init_value_list']]
             else:
                 generated = self.tokenizer.batch_decode(seq, skip_special_tokens=True)
             if '/mcts/' in outputfile:
@@ -641,6 +655,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                     'answer': batch['answer'][0],
                     'answer_content': batch['answer_content'][0],
                     'score': conf if '/scoring/' in outputfile else -1,
+                    'init_values': init_values,
                 }])
 
         dist.barrier()

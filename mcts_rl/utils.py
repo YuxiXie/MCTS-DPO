@@ -285,7 +285,7 @@ def split_prompt_response(
 
 def check_diversity(values):
     for scores in values[::-1]:
-        if scores[-1] - scores[0] > .5:
+        if scores[-1] - scores[0] > .3 and scores[-1] > 0 and scores[0] < 1:
             return True
     return False
 

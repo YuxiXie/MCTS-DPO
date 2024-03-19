@@ -56,10 +56,15 @@ class MathQADataset(RawDataset):
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
             self.data = gsm8k + math
-            raw_arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
-            for dt in raw_arithmo[::-1]:
-                prompt = dt['question'] if 'question' in dt else dt['problem']
-                if any(prompt.strip().startswith(x['question'].strip()) for x in gsm8k):
+            if self.SPLIT == 'train':
+                raw_arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
+                for dt in raw_arithmo[::-1]:
+                    prompt = dt['question'] if 'question' in dt else dt['problem']
+                    if any(prompt.strip().startswith(x['question'].strip()) for x in gsm8k):
+                        self.data.append(dt)
+            else:
+                for i, dt in enumerate(gsm8k[:]):
+                    dt['question'] = dt['question'] + ' Write a Python program to solve this.'
                     self.data.append(dt)
         else:
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
@@ -90,6 +95,12 @@ class MathQATrainDataset(MathQADataset):
 class MathQAAllTrainDataset(MathQADataset):
     NAME: str = 'MathQAAll/train'
     SPLIT: str = 'train'
+    TYPE: str = 'all'
+
+
+class MathQAAllTestDataset(MathQADataset):
+    NAME: str = 'MathQAAll/test'
+    SPLIT: str = 'test'
     TYPE: str = 'all'
 
 
