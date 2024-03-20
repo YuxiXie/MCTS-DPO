@@ -429,6 +429,11 @@ def parse_arguments() -> argparse.Namespace:
         action='store_true',
         default=False,
     )
+    mcts_parser.add_argument(
+        '--mcts_length_penalty',
+        type=float,
+        default=1.25,
+    )
 
     # Evaluation
     evaluation_parser = parser.add_argument_group('evaluation')

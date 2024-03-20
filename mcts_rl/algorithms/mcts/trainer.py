@@ -87,6 +87,7 @@ class MCTSTrainer(TSRLTrainer):
             temperature=self.args.mcts_temperature,
             temperature_decay_ratio=self.args.mcts_temperature_decay_ratio,
             consider_diversity=(not self.args.no_consider_diversity),
+            length_penalty=self.args.mcts_length_penalty,
         ))
         self.mcts_searcher = TreeConstructor(
             world_model=world_model, 
@@ -286,8 +287,8 @@ class MCTSTrainer(TSRLTrainer):
             except:
                 continue
             
-            better_seq_slice = slice(diverge_index, better_end_index + 1)
-            worse_seq_slice = slice(diverge_index, worse_end_index + 1)
+            better_seq_slice = slice(diverge_index - 1, better_end_index)
+            worse_seq_slice = slice(diverge_index - 1, worse_end_index)
             
             better_log_probs = better_sequence_log_probs[better_seq_slice].sum(dim=-1)
             worse_log_probs = worse_sequence_log_probs[worse_seq_slice].sum(dim=-1)

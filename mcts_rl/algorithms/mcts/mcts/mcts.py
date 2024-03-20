@@ -28,7 +28,8 @@ class MCTSConfig(NamedTuple):
     gamma: float = 1.0
     add_kl: bool = False
     consider_diversity: bool = True
-
+    length_penalty: float = 1.25
+    
 
 class MCTSNode(Generic[State, Action]):
     id_iter = itertools.count()
@@ -48,6 +49,7 @@ class MCTSNode(Generic[State, Action]):
         log_probs: torch.Tensor = None,
         ref_log_probs: torch.Tensor = None,
         is_terminal: bool = False,
+        length_penalty: float = 1.25,
     ):
         """
         A node in the MCTS search tree
@@ -67,6 +69,7 @@ class MCTSNode(Generic[State, Action]):
         self.parent = parent
         self.children: 'Optional[list[MCTSNode]]' = None
         self.depth = 0 if parent is None else parent.depth + 1
+        self.length_penalty = length_penalty
         
         self.rewards = base_rewards
         self.log_probs = log_probs
@@ -87,7 +90,7 @@ class MCTSNode(Generic[State, Action]):
     @property
     def p(self) -> float:
         # return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
-        return (self.log_probs.sum() / self.log_probs.size(-1) ** 1.25).exp().detach().item()  # PS: length_penalty = 1.25
+        return (self.log_probs.sum() / self.log_probs.size(-1) ** self.length_penalty).exp().detach().item()  # PS: length_penalty = 1.25
 
 
 class MCTSResult(NamedTuple):
@@ -132,6 +135,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         self.root: Optional[MCTSNode] = None
         self.disable_tqdm = args.disable_tqdm
         self.consider_diversity = args.consider_diversity
+        self.length_penalty = args.length_penalty
         
         self.policy_model = None
 
@@ -233,7 +237,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
             child = MCTSNode(state=None, action=action, parent=node, 
                              base_rewards=base_rewards, value=value, 
                              embeddings=embs, log_probs=log_probs, ref_log_probs=ref_log_probs,
-                             is_terminal=is_terminal)
+                             is_terminal=is_terminal, length_penalty=self.length_penalty)
             children.append(child)
         node.children = children if node.children is None else node.children + children
 
@@ -260,7 +264,7 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
 
     def search(self):
         if self.root is None:
-            self.root = MCTSNode(state=self.world_model.init_state(), action=None, parent=None)
+            self.root = MCTSNode(state=self.world_model.init_state(), action=None, parent=None, length_penalty=self.length_penalty)
         if self.output_trace_in_each_iter:
             self.trace_in_each_iter = []
 
