@@ -78,6 +78,7 @@ class MCTSTrainer(TSRLTrainer):
             eval_mode=self.args.eval_mode,
             temperature=self.args.temperature,
             init_temperature=self.args.init_temperature,
+            get_tp_zero=self.args.get_tp_zero,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -296,7 +297,7 @@ class MCTSTrainer(TSRLTrainer):
             ref_worse_log_probs = ref_worse_sequence_log_probs[worse_seq_slice].sum(dim=-1)
             better_log_ratio = better_log_probs - ref_better_log_probs
             worse_log_ratio = worse_log_probs - ref_worse_log_probs
-            if self.args.norm_prob:
+            if self.args.norm_prob or self.args.ipo:
                 better_log_ratio /= better_attention_mask[better_seq_slice].sum(dim=-1) ** self.args.length_penalty
                 worse_log_ratio /= worse_attention_mask[worse_seq_slice].sum(dim=-1) ** self.args.length_penalty
             logits = better_log_ratio - worse_log_ratio

@@ -455,7 +455,8 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 _step = int(self.args.resume_from_ckpt.split('/')[-1].replace('steps', ''))
                 steps_trained_in_current_epoch = _step
                 progress_bar.update(steps_trained_in_current_epoch)
-            steps_trained_in_current_epoch += 64    # avoid duplication
+                self.global_step = steps_trained_in_current_epoch
+            steps_trained_in_current_epoch += 1024    # avoid duplication
 
         if self.args.need_eval and self.eval_dataloader is not None:
             self.logger.print('\n***** Evaluating at the beginning *****')

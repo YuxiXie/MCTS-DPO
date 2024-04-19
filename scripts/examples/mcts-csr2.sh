@@ -27,11 +27,11 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/mistral-online-mcts/steps1536"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-3x2-t1/steps896"
 ACTOR_REF_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/mistral-online-mcts"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-3x2-t1"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -70,17 +70,18 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
-export WANDB_MODE=dryrun
+export WANDB_MODE=online
 
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=1
+gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets CSR/train \
+	--train_datasets MCQ/train \
 	--ptx_datasets ArithmoMCQ/train \
+	--choose_worst \
 	--use_mcq \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
@@ -90,15 +91,16 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--temperature 1.0 \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
+	--mcts_length_penalty 1.25 \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
-	--save_interval 256 \
+	--save_interval 128 \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 4e-7 \
+	--actor_lr 1e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
 	--actor_lr_warmup_ratio 0.03 \
@@ -111,19 +113,19 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-MCQ-CSR-yuxi \
+	--log_project MCTS-IPL-CSR-yuxi \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
 	--max_new_tokens 64 \
-	--n_iters 5 \
+	--n_iters 16 \
 	--depth_limit 3 \
-	--n_init_actions 4 \
-	--n_actions 3 \
-	--force_terminating_on_depth_limit \
-	--mcts_temperature 0.0
+	--n_init_actions 3 \
+	--n_actions 2 \
+	--mcts_temperature 0.0 
 
+# --force_terminating_on_depth_limit \
 # --per_device_eval_batch_size 1 \
 # --need_eval \
 # --eval_datasets PRM800K/test \

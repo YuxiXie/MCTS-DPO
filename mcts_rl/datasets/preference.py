@@ -48,7 +48,7 @@ class PreferenceBatch(TypedDict, total=True):
 
 class PreferenceDataset(TokenizedDataset):
     def preprocess(self, raw_sample: RawSample) -> PreferenceSample:
-        prompt = format_prompt(input=raw_sample['input'], eos_token=self.tokenizer.eos_token)
+        prompt = format_prompt(input=raw_sample['input'], eos_token=self.tokenizer.eos_token, use_mcq=self.use_mcq)
         better_answer = raw_sample['answer']
         worse_answer = raw_sample['other_answer']
         better = raw_sample['better']

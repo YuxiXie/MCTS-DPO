@@ -27,9 +27,11 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
+# ACTOR_MODEL_NAME_OR_PATH="meta-math/MetaMath-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/ipo-mistral-online-mcts/steps1408"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/e2-gsm8k-mistral-offline-mcts/steps640"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-2x2-gt-qa-d3/steps2176"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/metamath-5x3/steps768"
+ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -84,7 +86,6 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--eval_datasets GSM8K/test \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
-	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--max_length 512 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
@@ -115,9 +116,12 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--tf32 True \
 	--force_terminating_on_depth_limit \
 	--max_new_tokens 64 \
-	--depth_limit 3 \
 	--n_iters 5 \
+	--depth_limit 3 \
+	--n_init_actions 5 \
+	--n_actions 3 \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/e2-gsm8k-mistral-offline-mcts-s640.jsonl
+	--no_self_eval \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/predictions/llama3-instruct.jsonl

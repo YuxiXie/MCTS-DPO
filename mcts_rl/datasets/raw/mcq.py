@@ -45,13 +45,14 @@ class MCQDataset(RawDataset):
         data = []
         if self.SPLIT.count('test'):
             for x in self.data:
-                if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa', 'openbook']: continue
+                # if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa', 'openbook']: continue
+                # if x['label'] not in ['arc_hard', 'sciq', 'csqa']: continue
                 data.append(x)
+            self.data = data
         # else:
         #     for x in self.data:
         #         if x['label'] not in ['openbook', 'csqa']: continue
         #         data.append(x)
-        # self.data = data
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -86,7 +87,7 @@ class SQATrainDataset(MCQDataset):
 
 class CSRTrainDataset(MCQDataset):
     NAME: str = 'CSR/train'
-    DTYPE: str = 'csr'
+    DTYPE: str = 'csqa'
     SPLIT: str = 'train'
 
 
@@ -98,8 +99,8 @@ class SQATestDataset(MCQDataset):
 
 class CSRTestDataset(MCQDataset):
     NAME: str = 'CSR/test'
-    DTYPE: str = 'csr'
-    SPLIT: str = 'fulltest'
+    DTYPE: str = 'csqa'
+    SPLIT: str = 'test'
 
 
 class SciQTestDataset(MCQDataset):

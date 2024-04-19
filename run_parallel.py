@@ -8,17 +8,17 @@ from concurrent.futures import ProcessPoolExecutor as Pool
 def main(argv):
     gpu_id, fname = argv
     if gpu_id:
-        time.sleep(300)
-    completed_process = subprocess.run(["bash", fname], 
+        time.sleep(800)
+    completed_process = subprocess.run(["bash", fname, f'{gpu_id}'], 
                                        capture_output=True, 
                                        text=True)
-    fname = fname.split('/')[-1].split('.')[0]
+    # fname = fname.split('/')[-1].split('.')[0]
     # with open(f'{LOGDIR}/{fname}_stdout.log', 'w', encoding='utf-8') as f:
     #     f.write(completed_process.stdout)
     # with open(f'{LOGDIR}/{fname}_stderr.log', 'w', encoding='utf-8') as f:
     #     f.write(completed_process.stderr)
     
-    return 'done.'
+    # return 'done.'
 
 if __name__ == '__main__':
     fnames = sys.argv[1:]

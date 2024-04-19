@@ -56,26 +56,44 @@ DEFAULT_BOS_TOKEN: str = '<s>'
 DEFAULT_EOS_TOKEN: str = '</s>'
 DEFAULT_PAD_TOKEN: str = '<pad>'
 DEFAULT_UNK_TOKEN: str = '<unk>'
+# DEFAULT_BOS_TOKEN: str = '<|endoftext|>'
+# DEFAULT_EOS_TOKEN: str = '<|endoftext|>'
+# DEFAULT_PAD_TOKEN: str = '<|endoftext|>'
+# DEFAULT_UNK_TOKEN: str = '<|endoftext|>'
+# DEFAULT_BOS_TOKEN: str = '<|begin_of_text|>'
+# DEFAULT_EOS_TOKEN: str = '<|eot_id|>'
+# DEFAULT_PAD_TOKEN: str = '<|eot_id|>'
+# DEFAULT_UNK_TOKEN: str = '<|eot_id|>'
+
 
 # PROMPT_BEGIN: str = 'BEGINNING OF CONVERSATION: '
 # PROMPT_BEGIN: str = 'Answer the following question step by step:\n\n'
 PROMPT_BEGIN: str = 'A chat between a curious user and an assistant. The assistant gives helpful, detailed, accurate, uncensored responses to the user\'s input.'
+# PROMPT_BEGIN: str = "Below is an instruction that describes a task. Write a response that appropriately completes the request."
 
 # PROMPT_USER: str = 'USER: {input} '
 PROMPT_USER: str = 'QUESTION: {input}\n\n'
+# PROMPT_USER: str = '<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{input}<|eot_id|>'
 # PROMPT_USER: str = '\nUSER: {input}'
 # PROMPT_USER: str = '[INST] {input} [/INST]'
+# PROMPT_USER: str = "### Instruction:\n{input}\n\n"
 
 # PROMPT_ASSISTANT: str = 'ASSISTANT:'  # should not have a space at the end
 PROMPT_ASSISTANT_MCQ: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
+# PROMPT_ASSISTANT_MCQ: str = "### Response: Let's think step by step."
 # PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
 PROMPT_ASSISTANT: str = 'ANSWER:'
+# PROMPT_ASSISTANT: str = '<|start_header_id|>assistant<|end_header_id|>\n\n'
+# PROMPT_ASSISTANT: str = "### Response: Let's think step by step."
 # PROMPT_ASSISTANT: str = '\nASSISTANT:'
 # PROMPT_ASSISTANT: str = 'Let\'s think step by step.'
 # PROMPT_ASSISTANT: str = 'ANSWER: The answer is'
 
-EVAL_PROMPT_USER: str = 'QUESTION: {input}\n'
+EVAL_PROMPT_USER: str = 'QUESTION:'
+# EVAL_PROMPT_USER: str = "### Instruction:"
 EVAL_PROMPT_ASSISTANT: str = 'ANSWER:'
+# EVAL_PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
+# EVAL_PROMPT_ASSISTANT: str = '### Response:'
 
 PROMPT_INPUT: str = PROMPT_BEGIN + PROMPT_USER + PROMPT_ASSISTANT
 
@@ -139,17 +157,26 @@ REWARD_EVAL_PROMPT = '''
 
 # ANSWER: The answer is
 # '''.strip()
-
 HINTED_EVAL_PROMPT = '''
-{input}EXAMPLE SOLUTION: {solution}
+{input}EXAMPLE ANSWER: {solution}
 
 PROPOSED SOLUTION:{prompt}
 
-Evaluate if the proposed solution is logically heading in the correct direction like the example solution.
-Answer Choices: (A) incorrect (B) correct
+QUESTION: Evaluate if the proposed solution is logically heading in the correct direction based on the example answer.
+Answer Choices:\n(A) incorrect\n(B) correct
 
-ANSWER: The answer is
+'''+ EVAL_PROMPT_ASSISTANT + ''' The answer is
 '''.strip()
+# HINTED_EVAL_PROMPT = '''
+# {input}EXAMPLE SOLUTION: {solution}
+
+# PROPOSED SOLUTION:{prompt}
+
+# Evaluate if the proposed solution is logically heading in the correct direction like the example solution.
+# Answer Choices: (A) incorrect (B) correct
+
+# '''+ EVAL_PROMPT_ASSISTANT + ''' The answer is
+# '''.strip()
 
 
 EVAL_PROMPT = '''
@@ -211,32 +238,67 @@ QA_EVAL_PROMPT = (
 
 
 SQA_EXP = [
+    # {
+    #     'Q': 'Which likely changed the remains of prehistoric living things into natural gas?\nAnswer Choices: (A) air currents (B) fire (C) thunder (D) volcanic reactions',
+    #     'A': 'The transformation of the remains of prehistoric living things into natural gas is influenced by geological processes associated with heat and pressure, conditions often found in volcanic environments.\nAlthough the formation of natural gas primarily occurs in sedimentary basins under specific conditions, volcanic activity can contribute to the necessary heat and pressure.\nThe answer is D',
+    # },
+    # {
+    #     'Q': 'Scientists are discovering ways to make some crops use less water. A person working in which job would most benefit from this research?\nAnswer Choices: (A) a farmer (B) a doctor (C) a waiter (D) a cook',
+    #     'A': 'Farmers are directly involved in the cultivation and production of crops.\nAny advancements in agricultural techniques that improve water efficiency would significantly impact their work, leading to potentially higher yields, reduced water usage, and better sustainability in farming practices.\nThe answer is A',
+    # },
+    # {
+    #     'Q': 'When a car engine is started, gasoline is mixed with air and burned. Heat, sound, and chemical products are released. As the engine operates, which of these remains constant?\nAnswer Choices: (A) the masses of compounds found in the engine (B) the amount of heat in the engine (C) the total mass of gasoline (D) the total amount of energy',
+    #     'A': 'According to the law of conservation of energy, energy cannot be created or destroyed in an isolated system.\nIn a car engine, the chemical energy stored in gasoline is converted into mechanical energy, heat, and sound.\nWhile the forms of energy change, the total amount of energy remains constant.\nThis principle aligns with the concept of energy conservation in physics.\nThe answer is D',
+    # },
+    # {
+    #     'Q': 'Why is it better to wear a white T-shirt than a dark blue T-shirt in the summer?\nAnswer Choices: (A) Light-colored clothes let more air in. (B) Light-colored clothes prevent sweating. (C) Light-colored clothes are not as heavy as dark-colored clothes. (D) Light-colored clothes reflect more sunlight than dark-colored clothes.',
+    #     'A': "White and other light-colored clothing reflect more of the sun's rays, which helps keep the body cooler in hot weather.\nIn contrast, dark colors absorb more sunlight and can increase the feeling of heat.\nThis principle is based on the basic physics of light and heat absorption.\nThe answer is D",
+    # },
+    # {
+    #     'Q': 'Which of the following describes an object that must have a net negative charge?\nAnswer Choices: (A) It contains more molecules than atoms. (B) It contains more electrons than protons. (C) It is carrying an electric current. (D) It is made of metal.',
+    #     'A': 'An object becomes negatively charged when it has an excess of electrons compared to protons, since electrons carry a negative charge and protons carry a positive charge.\nThe imbalance in the number of these subatomic particles leads to a net negative charge.\nThe answer is B',
+    # },
+    # {
+    #     'Q': 'Where do you put your grapes just before checking out?\nAnswer Choices:\n(A) mouth\n(B) fruit market\n(C) super market\n(D) fruit basket\n(E) grocery cart',
+    #     'A': 'The answer should be the place where grocery items are placed before checking out.\nOf the above choices, grocery cart makes the most sense for holding grocery items.\nTherefore, the answer is (E).',
+    # },
     {
-        'Q': 'Which likely changed the remains of prehistoric living things into natural gas?\nAnswer Choices: (A) air currents (B) fire (C) thunder (D) volcanic reactions',
-        'A': 'The transformation of the remains of prehistoric living things into natural gas is influenced by geological processes associated with heat and pressure, conditions often found in volcanic environments.\nAlthough the formation of natural gas primarily occurs in sedimentary basins under specific conditions, volcanic activity can contribute to the necessary heat and pressure.\nThe answer is D',
+        'Q': 'What do people use to absorb extra ink from a fountain pen?\nAnswer Choices:\n(A) shirt pocket\n(B) calligrapher\'s hand\n(C) inkwell\n(D) desk drawer\n(E) blotter',
+        'A': 'The answer must be used to absorb extra ink.\nBlotters are designed to absorb liquids.\nTherefore, the answer is blotter (E).',
     },
     {
-        'Q': 'Scientists are discovering ways to make some crops use less water. A person working in which job would most benefit from this research?\nAnswer Choices: (A) a farmer (B) a doctor (C) a waiter (D) a cook',
-        'A': 'Farmers are directly involved in the cultivation and production of crops.\nAny advancements in agricultural techniques that improve water efficiency would significantly impact their work, leading to potentially higher yields, reduced water usage, and better sustainability in farming practices.\nThe answer is A',
+        'Q': 'What home entertainment equipment requires cable?\nAnswer Choices:\n(A) radio shack\n(B) substation\n(C) television\n(D) cabinet\n(E) desk',
+        'A': 'The answer must require cable.\nCable is used to provide satellite channels to televisions.\nTherefore, the answer is television (C).',
     },
     {
-        'Q': 'When a car engine is started, gasoline is mixed with air and burned. Heat, sound, and chemical products are released. As the engine operates, which of these remains constant?\nAnswer Choices: (A) the masses of compounds found in the engine (B) the amount of heat in the engine (C) the total mass of gasoline (D) the total amount of energy',
-        'A': 'According to the law of conservation of energy, energy cannot be created or destroyed in an isolated system.\nIn a car engine, the chemical energy stored in gasoline is converted into mechanical energy, heat, and sound.\nWhile the forms of energy change, the total amount of energy remains constant.\nThis principle aligns with the concept of energy conservation in physics.\nThe answer is D',
+        'Q': 'The fox walked from the city into the forest, what was it looking for?\nAnswer Choices:\n(A) pretty flowers\n(B) hen house\n(C) natural habitat\n(D) storybook\n(E) dense forest',
+        'A': 'The answer must be a reason for a fox to go into the forest.\nThe forest is a fox\'s natural habitat.\nTherefore, the answer is natural habitat (C).',
     },
     {
-        'Q': 'Why is it better to wear a white T-shirt than a dark blue T-shirt in the summer?\nAnswer Choices: (A) Light-colored clothes let more air in. (B) Light-colored clothes prevent sweating. (C) Light-colored clothes are not as heavy as dark-colored clothes. (D) Light-colored clothes reflect more sunlight than dark-colored clothes.',
-        'A': "White and other light-colored clothing reflect more of the sun's rays, which helps keep the body cooler in hot weather.\nIn contrast, dark colors absorb more sunlight and can increase the feeling of heat.\nThis principle is based on the basic physics of light and heat absorption.\nThe answer is D",
+        'Q': 'Sammy wanted to go to where the people were. Where might he go?\nAnswer Choices:\n(A) populated areas\n(B) race track\n(C) desert\n(D) apartment\n(E) roadblock',
+        'A': 'The answer must be a place with many people.\nPopulated areas, by definition, have a lot of people.\nTherefore, the answer is populated areas (A).',
     },
     {
-        'Q': 'Which of the following describes an object that must have a net negative charge?\nAnswer Choices: (A) It contains more molecules than atoms. (B) It contains more electrons than protons. (C) It is carrying an electric current. (D) It is made of metal.',
-        'A': 'An object becomes negatively charged when it has an excess of electrons compared to protons, since electrons carry a negative charge and protons carry a positive charge.\nThe imbalance in the number of these subatomic particles leads to a net negative charge.\nThe answer is B',
+        'Q': 'Where do you put your grapes just before checking out?\nAnswer Choices:\n(A) mouth\n(B) grocery cart\n(C) super market\n(D) fruit basket\n(E) fruit market',
+        'A': 'The answer should be the place where grocery items are placed before checking out.\nOf the above choices, grocery cart makes the most sense for holding grocery items.\nTherefore, the answer is (B).',
+    },
+    {
+        'Q': 'Google Maps and other highway and street GPS services have replaced what?\nAnswer Choices:\n(A) united states\n(B) mexico\n(C) countryside\n(D) atlas\n(E) oceans',
+        'A': 'The answer must be something that used to do what Google Maps and GPS services do, which is give directions.\nAtlases were also used to give directions.\nTherefore, the answer is atlas (D).',
+    },
+    {
+        'Q': 'Before getting a divorce, what did the wife feel who was doing all the work?\nAnswer Choices:\n(A) harder\n(B) anguish\n(C) bitterness\n(D) tears\n(E) sadness',
+        'A': 'The answer should be a feeling which would cause someone who was doing all the work to get divorced.\nIf someone feels bitter towards their spouse, they are likely to want a divorce.\nTherefore, the answer is bitterness (C).',
     },
 ]
 
 SQA_PROMPT = '\n\n'.join([
-    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN
-    for exp in SQA_EXP
+    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] for exp in SQA_EXP
 ]) + '\n\n'
+# SQA_PROMPT = '\n\n'.join([
+#     PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT_MCQ + '.\n' + exp['A'] + DEFAULT_EOS_TOKEN
+#     for exp in SQA_EXP[-1:]
+# ]) + '\n\n'
 
 
 GSM8K_EXPX = [

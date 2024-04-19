@@ -153,6 +153,8 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
                 try:
                     counts = [(x * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
                         for x, nc in zip(visit_counts, next_action_n_children)]
+                    # counts = [((x + 2) * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
+                    #     for x, nc in zip(next_action_Q, next_action_n_children)]
                     total_count = float(sum(counts))
                     probs = [x / total_count for x in counts]
                     return probs

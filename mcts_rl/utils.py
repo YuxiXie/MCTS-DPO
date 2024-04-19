@@ -296,8 +296,8 @@ def check_available(rl_batch, max_tokens=512, eos_token_id=2, to_filter=False):
     if 'input_ids' in rl_batch:
         return len(rl_batch['input_ids']) >= 2 and eos_token_id in rl_batch['input_ids'][-1].tolist()
     if to_filter:
-        return check_diversity(rl_batch['init_value_list'])
-        # return rl_batch.get('prediction', [False])[-1]
+        # return check_diversity(rl_batch['init_value_list'])
+        return any(rl_batch.get('prediction', [False])) or random.random() < .8
     input_ids_list = rl_batch['input_ids_list']
     counts = [
         input_ids.size(0) >= 2 and input_ids.size(-1) <= max_tokens and (input_ids[0] != input_ids[1]).nonzero().size(0)
@@ -682,11 +682,11 @@ def csr_equal(prediction, reference):
             options = [x for i, x in enumerate(options) if x not in options[i+1:]]
             prediction = options[-1].strip(punctuation)
     
-    sents = sent_tokenize(raw_prediction)    
-    if regex.match(f'The .*answer is .*[A-Z1-9]', raw_prediction.strip()) or \
-        (len(sents) == 1 and regex.search('.* answer is .*[A-Z1-9]', raw_prediction)):
-        # Simply returning the final results is not valid
-        return 0 if prediction == option.strip(punctuation) else -1    
+    # sents = sent_tokenize(raw_prediction)    
+    # if regex.match(f'The .*answer is .*[A-Z1-9]', raw_prediction.strip()) or \
+    #     (len(sents) == 1 and regex.search('.* answer is .*[A-Z1-9]', raw_prediction)):
+    #     # Simply returning the final results is not valid
+    #     return 0 if prediction == option.strip(punctuation) else -1    
     
     if prediction == option.strip(punctuation) and len(options) == 1 and format_flag:
         # Correct answer & readable format

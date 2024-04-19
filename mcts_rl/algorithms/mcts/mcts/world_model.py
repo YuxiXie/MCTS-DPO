@@ -55,7 +55,9 @@ class StepLMWorldModel(WorldModel[StepLMState, StepLMAction, LMExample]):
         
         if sum_tokens_num >= self.max_tokens_num:
             return True
-        elif state[-1].next_step_ids.eq(self.generation_config.eos_token_id).sum():
+        elif state[-1].next_step_ids.eq(self.base_tokenizer.eos_token_id).sum():
+            return True
+        elif self.base_tokenizer.decode(state[-1].next_step_ids).count('QUESTION: '):
             return True
         else:
             return False

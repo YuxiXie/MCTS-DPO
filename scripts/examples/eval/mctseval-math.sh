@@ -27,8 +27,8 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/e2-mistral-online-mcts/steps640"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-mcts/steps512"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -118,4 +118,229 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/math-sft-e1.jsonl
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-online-mcts-512.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-mcts/steps1024"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets GSM8K/train \
+	--eval_datasets MATH/test \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-CSR \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-online-mcts-1024.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-offline-mcts/steps1536"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets GSM8K/train \
+	--eval_datasets MATH/test \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-CSR \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-offline-mcts-1536.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-sc/steps1536"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets GSM8K/train \
+	--eval_datasets MATH/test \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-CSR \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-online-sc-1536.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-offline-mcts/steps2048"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets GSM8K/train \
+	--eval_datasets MATH/test \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-CSR \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-offline-mcts-2048.jsonl
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/mistral-online-sc/steps2048"
+
+deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets GSM8K/train \
+	--eval_datasets MATH/test \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--max_length 512 \
+	--repetition_penalty 1.0 \
+	--trust_remote_code True \
+	--epochs 1 \
+	--update_iters 1 \
+	--save_interval 128 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--per_device_eval_batch_size 1 \
+	--gradient_accumulation_steps 8 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.01 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
+	--need_eval \
+	--seed 42 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--output_dir "${OUTPUT_DIR}" \
+	--log_type wandb \
+	--log_project MCTS-DPO-CSR \
+	--zero_stage "${ZERO_STAGE}" \
+	--offload "${OFFLOAD}" \
+	--bf16 True \
+	--tf32 True \
+	--force_terminating_on_depth_limit \
+	--max_new_tokens 64 \
+	--depth_limit 3 \
+	--n_iters 5 \
+	--mcts_temperature 0.0 \
+	--num_return_sequences 1 \
+	--temperature 1.0 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/mathqa/predictions/mj2/math-mistral-online-sc-2048.jsonl

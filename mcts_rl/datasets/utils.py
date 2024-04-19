@@ -52,8 +52,8 @@ def format_prompt(
     if 'USER:' in PROMPT_USER:
         buffer = [PROMPT_BEGIN]
     elif few_shot:
-        buffer = [GSM8K_PROMPT]
-        # buffer = [SQA_PROMPT]
+        # buffer = [GSM8K_PROMPT]
+        buffer = [SQA_PROMPT]
     else:
         # exp = random.choice(GSM8K_EXP)
         # buffer = [PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN + '\n\n']
