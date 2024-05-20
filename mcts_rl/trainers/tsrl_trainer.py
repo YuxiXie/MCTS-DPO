@@ -187,6 +187,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
             tokenizer=self.tokenizer,
             use_mcq=self.args.use_mcq,
             few_shot=self.args.few_shot,
+            model_type=self.args.model_type,
         ) if not self.args.post else PromptOnlyPostDataset(
             self.args.train_datasets,
             tokenizer=self.tokenizer,
@@ -209,6 +210,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                     tokenizer=self.tokenizer,
                     use_mcq=self.args.use_mcq,
                     few_shot=self.args.few_shot,
+                    model_type=self.args.model_type,
                 )
                 self.eval_dataloader = DataLoader(
                     eval_dataset,
@@ -456,7 +458,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 steps_trained_in_current_epoch = _step
                 progress_bar.update(steps_trained_in_current_epoch)
                 self.global_step = steps_trained_in_current_epoch
-            steps_trained_in_current_epoch += 1024    # avoid duplication
+            steps_trained_in_current_epoch = int(steps_trained_in_current_epoch * 5/4)    # avoid duplication
 
         if self.args.need_eval and self.eval_dataloader is not None:
             self.logger.print('\n***** Evaluating at the beginning *****')
@@ -492,7 +494,11 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                 self.set_train()
                 for _ in range(self.args.update_iters):
                     for rl_batch, ptx_batch in zip(rl_batches, ptx_batches):
-                        if not check_available(rl_batch, max_tokens=self.args.max_length, to_filter=self.args.filter): continue
+                        if not check_available(rl_batch, 
+                                               eos_token_id=self.tokenizer.convert_tokens_to_ids("<|eot_id|>") if self.args.model_type == 'llama3' else self.tokenizer.eos_token_id,
+                                               max_tokens=self.args.max_length, 
+                                               to_filter=self.args.filter):
+                            continue
                         rl_info = self.tsrl_step(**rl_batch)
                         if rl_info is None or not len(rl_info): continue
                         torch.cuda.empty_cache()
@@ -509,13 +515,14 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         progress_bar.update(1)
                         
                         if self.args.save_mcts_data:
-                            prompt = self.tokenizer.batch_decode(rl_batch['prompts_list'][0], skip_special_tokens=True)
-                            generated = [self.tokenizer.batch_decode(seq, skip_special_tokens=True) for seq in rl_batch['input_ids_list']]
+                            prompt = self.tokenizer.batch_decode(rl_batch['prompts_list'][0], skip_special_tokens=False, clean_up_tokenization_spaces=False)
+                            generated = [self.tokenizer.batch_decode(seq, skip_special_tokens=False, clean_up_tokenization_spaces=False) for seq in rl_batch['input_ids_list']]
                             init_values = [x for x in rl_batch['init_value_list']]
-                            generated = [[text[len(prompt[0]) :] for text in text_list] for i, text_list in enumerate(generated)]
+                            # generated = [[text[len(prompt[0]):] for text in text_list] for i, text_list in enumerate(generated)]
+                            generated = [[text for text in text_list] for i, text_list in enumerate(generated)]
                             with jsonlines.open(os.path.join(self.args.output_dir, 'mcts_rst_data.jsonl'), mode='a') as writer:
                                 writer.write_all([{
-                                    'prompt': prompt, 
+                                    'prompt': prompt[0], 
                                     'generated': generated,
                                     'init_values': init_values,
                                 }])
@@ -623,6 +630,14 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                                 conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
                                 break
             else:
+                terminators = [self.tokenizer.eos_token_id]
+                terminators += [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.args.model_type == 'llama3' else []
+                
+                if batch['input_ids'].size(-1) >= self.args.max_length:
+                    prompts.append(self.tokenizer.batch_decode(batch['input_ids'], skip_special_tokens=True))
+                    generateds.append('')
+                    continue
+                
                 with torch.no_grad():
                     seq = self.actor_model.module.generate(
                         input_ids=batch['input_ids'],
@@ -630,6 +645,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         max_length=self.args.max_length,
                         synced_gpus=True,
                         do_sample=False,
+                        eos_token_id=terminators,
                     )
 
             dist.barrier()

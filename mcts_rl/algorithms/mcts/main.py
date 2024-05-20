@@ -119,6 +119,12 @@ def parse_arguments() -> argparse.Namespace:
     # Training
     training_parser = parser.add_argument_group('training')
     training_parser.add_argument(
+        '--model_type',
+        type=str,
+        default='mistral',
+        choices=['mistral', 'llama3', 'llama2', 'gpt-j'],
+    )
+    training_parser.add_argument(
         '--save_mcts_data',
         action='store_true',
         default=False,
@@ -140,6 +146,11 @@ def parse_arguments() -> argparse.Namespace:
     )
     training_parser.add_argument(
         '--ipo',
+        action='store_true',
+        default=False,
+    )
+    training_parser.add_argument(
+        '--conservative',
         action='store_true',
         default=False,
     )

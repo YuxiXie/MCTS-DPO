@@ -27,11 +27,13 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-3x2-t1/steps896"
-ACTOR_REF_MODEL_NAME_OR_PATH="akjindal53244/Arithmo-Mistral-7B"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/divtree-gpt-j-bdpo/steps640"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/csqa-gptj-4x3-dpo/steps512"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-4x2-t1-noeval/steps768"
+ACTOR_REF_MODEL_NAME_OR_PATH="EleutherAI/gpt-j-6B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-3x2-t1"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/divtree-gpt-j-bdpo"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -79,38 +81,39 @@ gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets MCQ/train \
-	--ptx_datasets ArithmoMCQ/train \
+	--train_datasets CSR/train \
+	--model_type gpt-j \
+	--save_mcts_data \
 	--choose_worst \
-	--use_mcq \
+	--few_shot \
+	--filter \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
-	--max_length 512 \
+	--max_length 640 \
 	--temperature 1.0 \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
-	--mcts_length_penalty 1.25 \
+	--mcts_length_penalty 2.0 \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
-	--save_interval 128 \
+	--save_interval 64 \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 1e-6 \
+	--actor_lr  4e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
-	--actor_lr_warmup_ratio 0.03 \
+	--actor_lr_warmup_ratio 0.2 \
 	--actor_gradient_checkpointing \
 	--seed 42 \
 	--kl_coeff 0.02 \
 	--clip_range_ratio 0.2 \
 	--clip_range_score 50.0 \
 	--clip_range_value 5.0 \
-	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
 	--log_project MCTS-IPL-CSR-yuxi \
@@ -118,12 +121,12 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 64 \
+	--max_new_tokens 32 \
 	--n_iters 16 \
 	--depth_limit 3 \
-	--n_init_actions 3 \
-	--n_actions 2 \
-	--mcts_temperature 0.0 
+	--n_init_actions 4 \
+	--n_actions 3 \
+	--mcts_temperature 0.0
 
 # --force_terminating_on_depth_limit \
 # --per_device_eval_batch_size 1 \

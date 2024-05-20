@@ -23,13 +23,12 @@ from torch.nn.utils.rnn import pad_sequence
 from torch.types import Number
 
 from mcts_rl.configs import (
-    DEFAULT_EOS_TOKEN,
-    PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ, 
-    PROMPT_BEGIN, PROMPT_USER, 
-    COT_INSTRUCTIONS, 
-    MATH_PROMPT, 
-    GSM8K_PROMPT, GSM8K_EXP,
+    PROMPT_BEGIN, PROMPT_USER,
+    PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ,
     SQA_PROMPT,
+    LLAMA3_PROMPT_USER,
+    LLAMA3_PROMPT_ASSISTANT, 
+    LLAMA3_PROMPT_ASSISTANT_MCQ,
 )
 
 
@@ -38,6 +37,7 @@ def format_prompt(
     eos_token: str,
     use_mcq: bool = False,
     few_shot: bool = False,
+    model_type: str = 'mistral',
 ) -> str:
     if isinstance(input, str):
         input = [input]
@@ -63,8 +63,12 @@ def format_prompt(
     for i, line in enumerate(input):
         if i % 2 == 0:
             # User input
-            buffer.extend((PROMPT_USER.format(input=line), 
-                           PROMPT_ASSISTANT_MCQ if use_mcq else PROMPT_ASSISTANT))
+            if model_type == 'llama3':
+                buffer.extend((LLAMA3_PROMPT_USER.format(input=line), 
+                            LLAMA3_PROMPT_ASSISTANT_MCQ if use_mcq else LLAMA3_PROMPT_ASSISTANT))
+            else:
+                buffer.extend((PROMPT_USER.format(input=line), 
+                            PROMPT_ASSISTANT_MCQ if use_mcq else PROMPT_ASSISTANT))
         else:
             # Assistant response
             buffer.extend((line, eos_token))

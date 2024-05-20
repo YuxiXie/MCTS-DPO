@@ -45,10 +45,13 @@ class MCQDataset(RawDataset):
         data = []
         if self.SPLIT.count('test'):
             for x in self.data:
-                # if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq', 'csqa', 'openbook']: continue
+                if self.DTYPE == 'all':
+                    if x['label'] not in ['arc_hard', 'ai2s_mid', 'sciq']: continue
                 # if x['label'] not in ['arc_hard', 'sciq', 'csqa']: continue
                 data.append(x)
             self.data = data
+            if self.DTYPE == 'csqa':
+                self.data = data[:len(data) // 2]
         # else:
         #     for x in self.data:
         #         if x['label'] not in ['openbook', 'csqa']: continue

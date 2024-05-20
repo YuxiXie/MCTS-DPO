@@ -53,9 +53,11 @@ class StepLMWorldModel(WorldModel[StepLMState, StepLMAction, LMExample]):
         input_length = self.example['attention_mask'].nonzero()[-1].item() + 1
         sum_tokens_num = sum(x.next_step_ids.size(0) for x in state) + input_length
         
-        if sum_tokens_num >= self.max_tokens_num:
+        if sum_tokens_num >= self.max_tokens_num - 5:
             return True
         elif state[-1].next_step_ids.eq(self.base_tokenizer.eos_token_id).sum():
+            return True
+        elif state[-1].next_step_ids.eq(self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")).sum():
             return True
         elif self.base_tokenizer.decode(state[-1].next_step_ids).count('QUESTION: '):
             return True

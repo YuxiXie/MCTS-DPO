@@ -27,12 +27,15 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
+# ACTOR_MODEL_NAME_OR_PATH="meta-math/MetaMath-Mistral-7B"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-5x3-qa"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-2x2-d3stop-qa/steps2176"
-ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-2x2-d3stop-qa/steps2176"
+# ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/divtree-llama3-cdpo/steps1152"
+ACTOR_REF_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-2x2-d3stop-qa"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/divtree-llama3-cdpo"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -81,33 +84,34 @@ gpu_vis=$1
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets MathQA/train \
-	--ptx_datasets Arithmo/train \
+	--model_type llama3 \
 	--choose_worst \
 	--save_mcts_data \
+	--filter \
 	--iteration_interval 32 \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
-	--max_length 768 \
-	--temperature 2.0 \
+	--max_length 512 \
+	--temperature 1.25 \
 	--init_temperature 1.0 \
 	--mcts_length_penalty 2.0 \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
 	--epochs 1 \
-	--ipo \
+	--conservative \
 	--update_iters 1 \
 	--save_interval 128 \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 1e-6 \
+	--actor_lr 4e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
-	--actor_lr_warmup_ratio 0.03 \
+	--actor_lr_warmup_ratio 0.1 \
 	--actor_gradient_checkpointing \
 	--seed 42 \
 	--kl_coeff 0.02 \
@@ -129,8 +133,3 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--n_actions 2 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
-
-# --no_self_eval
-# --per_device_eval_batch_size 1 \
-# --need_eval \
-# --eval_datasets PRM800K/test \

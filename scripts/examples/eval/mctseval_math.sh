@@ -27,9 +27,12 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps16806"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim10-evalscript/steps512"
+# ACTOR_MODEL_NAME_OR_PATH="meta-math/MetaMath-Mistral-7B"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-2x2-gt-qa-d3/steps2176"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/metamath-5x3/steps768"
+ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/divtree-mistral-cdpo/steps1792"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -81,10 +84,10 @@ gpu_vis=0
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets GSM8K/train \
-	--eval_datasets MathQAAll/train \
+	--eval_datasets MATH/test \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
-	--max_length 512 \
+	--max_length 768 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
 	--epochs 1 \
@@ -113,15 +116,13 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--bf16 True \
 	--tf32 True \
 	--force_terminating_on_depth_limit \
-	--max_new_tokens 32 \
-	--n_iters 16 \
+	--max_new_tokens 64 \
+	--n_iters 5 \
 	--depth_limit 3 \
 	--n_init_actions 5 \
 	--n_actions 3 \
-	--mcts_temperature 0.2 \
+	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
-	--temperature 2.5 \
-	--init_temperature 1.25 \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/predictions/mcts/E3-mathall-train-s32.jsonl
-
-# --no_consider_diversity \
+	--temperature 1.0 \
+	--model_type mistral \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/predictions/mistral_math1792.jsonl

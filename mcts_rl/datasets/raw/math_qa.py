@@ -69,7 +69,10 @@ class MathQADataset(RawDataset):
         else:
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
-            arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
+            try:
+                arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
+            except:
+                arithmo = get_math_data(jsonlines_load('/home/users/nus/e0672129/scratch/arithmo/train.jsonl'))
             self.data = gsm8k + math #+ list(random.sample(arithmo, min(len(gsm8k + math), len(arithmo))))
 
     def __getitem__(self, index: int) -> RawSample:

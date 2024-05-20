@@ -16,6 +16,7 @@
 
 from mcts_rl.algorithms.dpo import DPOTrainer
 from mcts_rl.algorithms.ppo import PPOTrainer
+from mcts_rl.algorithms.mcts import MCTSTrainer
 
 
-__all__ = ['PPOTrainer', 'DPOTrainer']
+__all__ = ['PPOTrainer', 'DPOTrainer', 'MCTSTrainer']

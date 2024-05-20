@@ -27,13 +27,14 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="EleutherAI/gpt-j-6B"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/gpt-j-cdpo-reverse/steps896"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/csqa-gptj-4x3-dpo/steps512"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-4x2-t1-noeval/steps768"
+ACTOR_MODEL_NAME_OR_PATH="EleutherAI/gpt-j-6B"
 ACTOR_REF_MODEL_NAME_OR_PATH="EleutherAI/gpt-j-6B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/csqa-gptj-4x3-dpo"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/zeroshot-gpt-j-cdpo"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -82,13 +83,16 @@ gpu_vis=$1
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets CSR/train \
+	--model_type gpt-j \
+	--save_mcts_data \
 	--choose_worst \
 	--few_shot \
-	--get_tp_zero \
+	--filter \
+	--conservative \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
-	--max_length 896 \
+	--max_length 640 \
 	--temperature 1.0 \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
@@ -101,10 +105,10 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 32 \
-	--actor_lr 1e-6 \
+	--actor_lr 4e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
-	--actor_lr_warmup_ratio 0.03 \
+	--actor_lr_warmup_ratio 0.2 \
 	--actor_gradient_checkpointing \
 	--seed 42 \
 	--kl_coeff 0.02 \
@@ -119,7 +123,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--bf16 True \
 	--tf32 True \
 	--max_new_tokens 32 \
-	--n_iters 16 \
+	--n_iters 64 \
 	--depth_limit 3 \
 	--n_init_actions 4 \
 	--n_actions 3 \

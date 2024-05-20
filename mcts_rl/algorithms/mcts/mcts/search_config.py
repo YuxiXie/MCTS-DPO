@@ -1,6 +1,7 @@
 from typing import Optional, NamedTuple
 
 import regex
+import random
 import numpy as np
 from tqdm import trange, tqdm
 from string import punctuation
@@ -22,10 +23,14 @@ from mcts_rl.algorithms.mcts.mcts.world_model import StepLMState, StepLMAction
 from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks, check_match
 from mcts_rl.utils import extract_answer, math_equal, csr_equal
 from mcts_rl.configs import (
-    PROMPT_BEGIN, PROMPT_USER, PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ,
-    SELF_EVAL_I, SELF_EVAL_E, HH_EVAL_PROMPT, QA_EVAL_PROMPT,
-    EVAL_PROMPT_USER, EVAL_PROMPT_ASSISTANT, EVAL_PROMPT, SAFE_EVAL_PROMPT,
-    ANSWER_HINT, HINTED_PROMPT, HINTED_EVAL_PROMPT, HINTED_EVAL_PROMPT_I,  REWARD_EVAL_PROMPT,
+    PROMPT_BEGIN, PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ,
+    HH_EVAL_PROMPT,
+    EVAL_PROMPT_USER, EVAL_PROMPT_ASSISTANT,
+    ANSWER_HINT, HINTED_EVAL_PROMPT, REWARD_EVAL_PROMPT,
+    LLAMA3_HINTED_EVAL_PROMPT,
+    LLAMA3_PROMPT_ASSISTANT, 
+    LLAMA3_EVAL_PROMPT_USER, LLAMA3_EVAL_PROMPT_ASSISTANT, 
+    LLAMA3_PROMPT_ASSISTANT_MCQ,
 )
 
 
@@ -53,6 +58,7 @@ class SearchArgs(NamedTuple):
     init_temperature: float = 1.0
     temperature: float = 1.0
     get_tp_zero: bool = False
+    model_type: str = 'mistral'
 
 
 class StepLMConfig(SearchConfig):
@@ -92,6 +98,9 @@ class StepLMConfig(SearchConfig):
         self.prompt_assistant = PROMPT_ASSISTANT_MCQ if self.use_mcq else PROMPT_ASSISTANT
         
         self.get_tp_zero = args.get_tp_zero
+        self.model_type = args.model_type
+        if self.model_type == 'llama3':
+            self.prompt_assistant = LLAMA3_PROMPT_ASSISTANT_MCQ if self.use_mcq else LLAMA3_PROMPT_ASSISTANT
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -151,54 +160,66 @@ class StepLMConfig(SearchConfig):
         
         input_ids, attention_mask = self._get_sequence_ids_in_path(state)
         unique_text_list, sequences_list = [], []
-        prompt = self.base_tokenizer.decode(input_ids, skip_special_tokens=True)
-        # terminators = [
-        #     self.base_tokenizer.eos_token_id,
-        #     self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")
-        # ]
+        prompt = self.base_tokenizer.decode(input_ids, 
+                                            skip_special_tokens=self.model_type != 'llama3', 
+                                            clean_up_tokenization_spaces=False)
+        
+        terminators = [self.base_tokenizer.eos_token_id]
+        terminators += [self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.model_type == 'llama3' else []        
         for _ in trange(n_actions, disable=self.disable_tqdm, desc='Expand: action generation', leave=False):
+            cur_max_new_tokens = self.generation_config.max_new_tokens
             if (not self.get_tp_zero) or unique_text_list or prompt.startswith(PROMPT_BEGIN):
+                cur_max_new_tokens = (self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else cur_max_new_tokens
+                cur_max_new_tokens = max(1, min(cur_max_new_tokens, self.generation_config.max_length - input_ids.size(-1)))
                 sequences = policy_model.module.generate(
                     input_ids=input_ids.unsqueeze(0),
                     attention_mask=attention_mask.unsqueeze(0),
-                    temperature=self.init_temperature if not len(state) else self.temperature,
-                    max_new_tokens=(self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else self.generation_config.max_new_tokens,
+                    temperature=self.init_temperature if not len(state) else (self.temperature if random.random() < .75 else 1.0),
+                    max_new_tokens=cur_max_new_tokens,
                     repetition_penalty=self.generation_config.repetition_penalty,
                     bos_token_id=self.base_tokenizer.bos_token_id,
-                    eos_token_id=self.base_tokenizer.eos_token_id,
-                    pad_token_id=self.base_tokenizer.pad_token_id,
-                    use_cache=True,
+                    pad_token_id=self.base_tokenizer.eos_token_id,
                     do_sample=True,
+                    eos_token_id=terminators,
+                    synced_gpus=True,
                 )
             else:
+                cur_max_new_tokens = (self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else cur_max_new_tokens
+                cur_max_new_tokens = max(1, min(cur_max_new_tokens, self.generation_config.max_length - input_ids.size(-1)))
                 sequences = policy_model.module.generate(
                     input_ids=input_ids.unsqueeze(0),
                     attention_mask=attention_mask.unsqueeze(0),
-                    max_new_tokens=(self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else self.generation_config.max_new_tokens,
+                    max_new_tokens=cur_max_new_tokens,
                     repetition_penalty=self.generation_config.repetition_penalty,
                     bos_token_id=self.base_tokenizer.bos_token_id,
-                    eos_token_id=self.base_tokenizer.eos_token_id,
-                    pad_token_id=self.base_tokenizer.pad_token_id,
-                    synced_gpus=True,
+                    pad_token_id=self.base_tokenizer.eos_token_id,
                     do_sample=False,
+                    eos_token_id=terminators,
+                    synced_gpus=True,
                 )
             
             for seq in sequences:
-                full_generated = self.base_tokenizer.decode(seq, skip_special_tokens=True)
-                full_generated = full_generated.replace(prompt, '') if full_generated.startswith(prompt) else \
-                                    self.base_tokenizer.decode(seq[input_ids.size(-1):], skip_special_tokens=True)
+                full_generated = self.base_tokenizer.decode(seq, 
+                                                            skip_special_tokens=self.model_type != 'llama3', 
+                                                            clean_up_tokenization_spaces=False)
+                full_generated = full_generated[len(prompt):] if full_generated.startswith(prompt) else \
+                                        self.base_tokenizer.decode(seq[input_ids.size(-1):], 
+                                                                   skip_special_tokens=self.model_type != 'llama3', 
+                                                                   clean_up_tokenization_spaces=False)
                 raw_full_generated = full_generated
-                full_generated = full_generated.split(EVAL_PROMPT_USER.split(':')[0])[0]
-                if raw_full_generated != full_generated:
-                    full_generated = full_generated.rstrip() + self.base_tokenizer.eos_token
+                if self.model_type != 'llama3':
+                    full_generated = full_generated.split(EVAL_PROMPT_USER.split(':')[0])[0]
+                    if raw_full_generated != full_generated:
+                        full_generated = full_generated.rstrip() + self.base_tokenizer.eos_token
                 
                 newline_flag = True
                 raw_sentences = regex.split(r'[\n]+', full_generated)
-                if len(raw_sentences) <= 1 and self.use_mcq:
+                if len(raw_sentences) <= 1 and not self.use_code:
                     raw_sentences = sent_tokenize(full_generated)
+                    newline_flag = False
                 sentences, sent, subcnt = [], '', 0
                 for i, raw_sent in enumerate(raw_sentences):
-                    sent += f'\n{raw_sent}' if subcnt else raw_sent
+                    sent += (f'\n{raw_sent}' if newline_flag else f' {raw_sent}') if subcnt else raw_sent
                     subcnt += 1
                     if i == len(raw_sentences) - 1:
                         sentences.append(sent)
@@ -208,22 +229,46 @@ class StepLMConfig(SearchConfig):
                             and all(not sent.strip().endswith(x) for x in [':', '(', '['])):
                             sentences.append(sent)
                             sent, subcnt = '', 0
+                for i, raw_sent in enumerate(sentences):
+                    if ' answer is' in raw_sent and not raw_sent.endswith(' answer is'):
+                        if self.model_type == 'llama3':
+                            if "<|eot_id|>" not in raw_sent:
+                                sentences[i] += "<|eot_id|>"
+                        elif self.base_tokenizer.eos_token not in raw_sent:
+                            sentences[i] += self.base_tokenizer.eos_token
+                        sentences = sentences[:i + 1]
+                        break
                 
                 sents = []
-                for sid, sent in enumerate(sentences):
-                    sents.append(sent)
-                    if len(' '.join(sents).strip()) and sid >= len(sentences) - 2 and self.n_actions > 1:
-                        if len(state) + 1 < self.depth_limit:
-                            break
+                if not len(sentences): continue
+                if self.n_actions > 1 and not len(state) and len(sentences) > 1 and \
+                    any(x in ''.join(sentences) for x in ["<|eot_id|>", self.base_tokenizer.eos_token]):
+                    # further break down single-step output if possible
+                    sents = sentences[:-1]
+                elif sentences[-1].rstrip().endswith('.') or len(sentences) < 2:
+                    # fullstop / cannot break down --> accept as a valid step
+                    sents = sentences
+                elif len(state) and ((seq.size(-1) - input_ids.size(-1) < cur_max_new_tokens) or 
+                    any(x in ''.join(sentences) for x in ["<|eot_id|>", self.base_tokenizer.eos_token])):
+                    # reach a terminate state
+                    sents = sentences
+                elif self.n_actions > 1:
+                    sents = sentences[:-1]
+                else:
+                    sents = sentences
                 step = '\n'.join(sents) if newline_flag else ' '.join(sents)
                 
-                text = f'{step}\n' if len(sents) < len(sentences) else full_generated
+                text = step
+                if len(sents) == len(sentences):
+                    text = full_generated
+                elif len(sents) < len(sentences) and newline_flag:
+                    text += '\n'
                 if text in unique_text_list or not text.strip():
                     continue
                 
                 gen_ids = self.base_tokenizer(
                     prompt + text,
-                    add_special_tokens=True,
+                    add_special_tokens=self.model_type != 'llama3',
                     truncation=TruncationStrategy.LONGEST_FIRST,
                     return_tensors='pt',
                 )['input_ids'][0].to(seq.device) if len(sents) < len(sentences) or raw_full_generated != full_generated else seq
@@ -235,22 +280,37 @@ class StepLMConfig(SearchConfig):
                 unique_text_list.append(text)
         
         if not self.use_mcq and self.example.get('reasoning', ''):
-            pre_gen = prompt.split(EVAL_PROMPT_ASSISTANT)[-1]
-            full_generated = f" {self.example['reasoning'].strip()}\nThe answer is {self.example['answer']}{self.base_tokenizer.eos_token}"
-            solution_steps = regex.split(r'[\n]+', full_generated)
-            solution_steps = [f'{x}\n' if i < len(solution_steps) - 1 else x for i,x in enumerate(solution_steps)]
+            pre_gen = prompt.split(LLAMA3_EVAL_PROMPT_ASSISTANT)[-1] if self.model_type == 'llama3' else prompt.split(EVAL_PROMPT_ASSISTANT)[-1]
+            newline_flag = True
+            _solution_steps = regex.split(r'[\n]+', self.example['reasoning'].strip())
+            if len(_solution_steps) < 2 and not self.use_code:
+                _solution_steps = sent_tokenize(self.example['reasoning'].strip())
+                newline_flag = False
+            if not self.use_code:
+                _solution_steps.append("The answer is {}{}".format(self.example['answer'], "<|eot_id|>" if self.model_type == 'llama3' else self.base_tokenizer.eos_token))
+            solution_steps = []
+            for i, x in enumerate(_solution_steps):
+                if newline_flag and i < len(solution_steps) - 1:
+                    solution_steps.append(f'{x}\n')
+                elif not newline_flag and i > 0:
+                    solution_steps.append(f' {x}')
+                else:
+                    solution_steps.append(x)
             cur_step = ''
             for i, step in enumerate(solution_steps):
-                if pre_gen == cur_step:
+                if pre_gen.lstrip() == cur_step.lstrip():
                     j = len(solution_steps)
                     text = ''.join(solution_steps[i:j])
-                    while n_actions > 1 and j > i + 1 and len(self.base_tokenizer.encode(text)) > self.generation_config.max_new_tokens:
+                    while n_actions > 1 and j > i + 1 and (len(self.base_tokenizer.encode(text)) > (self.generation_config.max_new_tokens * 9/8) or
+                                                           (j == len(solution_steps) and i == 0)):
                         j -= 1
-                        text = ''.join(solution_steps[i:j])                    
+                        text = ''.join(solution_steps[i:j])
                     if text not in unique_text_list:
+                        if self.model_type != 'llama3' and not pre_gen.strip() and not text.startswith('\n'):
+                            text = f' {text}'
                         gen_ids = self.base_tokenizer(
                             prompt + text,
-                            add_special_tokens=True,
+                            add_special_tokens=self.model_type != 'llama3',
                             truncation=TruncationStrategy.LONGEST_FIRST,
                             return_tensors='pt',
                         )['input_ids'][0].to(seq.device)
@@ -260,8 +320,12 @@ class StepLMConfig(SearchConfig):
                 cur_step += step
         
         if not len(sequences_list):
-            sequences_list.append(torch.tensor([self.base_tokenizer.eos_token_id]).to(input_ids.device))
-            unique_text_list.append(self.base_tokenizer.eos_token)
+            if self.model_type == 'llama3':
+                sequences_list.append(torch.tensor([self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")]).to(input_ids.device))
+                unique_text_list.append("<|eot_id|>")
+            else:
+                sequences_list.append(torch.tensor([self.base_tokenizer.eos_token_id]).to(input_ids.device))
+                unique_text_list.append(self.base_tokenizer.eos_token)
         
         results = []
         for gen_ids in sequences_list:
@@ -269,7 +333,7 @@ class StepLMConfig(SearchConfig):
             seq_attention_mask = torch.logical_and(
                 seq_input_ids.not_equal(self.base_tokenizer.pad_token_id),
                 seq_input_ids.not_equal(self.base_tokenizer.unk_token_id),
-            )            
+            )
             logits, hidden_states = self._get_logits(seq_input_ids, attention_mask=seq_attention_mask, model=policy_model.module)
             log_probs = self._gather_log_probabilities(logits[input_ids.size(-1)-1:-1, :], gen_ids.to(logits.device))
             embs = hidden_states[input_ids.size(-1):]
@@ -310,7 +374,6 @@ class StepLMConfig(SearchConfig):
         )
         return input_ids, attention_mask
 
-    @torch.no_grad()
     def get_values(
         self,
         policy_model,
@@ -321,6 +384,7 @@ class StepLMConfig(SearchConfig):
         correct_token_ids: list[int] = [319],
         add_kl: bool = False,
         parent_depth: int = 0,
+        parent_value: float = 0.0,
     ) -> list[tuple[float, bool]]:
         outputs = []
         input_ids, attention_mask = self._get_sequence_ids_in_path(state)
@@ -362,20 +426,25 @@ class StepLMConfig(SearchConfig):
                         truncation=TruncationStrategy.LONGEST_FIRST,
                         return_tensors='pt',
                     )
-                    sequences = policy_model.module.generate(
-                        input_ids=eval_inputs['input_ids'].to(device),
-                        attention_mask=eval_inputs['attention_mask'].to(device),
-                        max_new_tokens=4,
-                        do_sample=False,
-                        output_scores=True,
-                        synced_gpus=True,
-                        return_dict_in_generate=True,
-                        # eos_token_id=self.base_tokenizer.encode('\n')[-1],
-                    )
                     
-                    sequences, scores = sequences.sequences.cpu(), sequences.scores
-                    seq = sequences[0][eval_inputs['input_ids'].size(-1):]
-                    response = self.base_tokenizer.decode(seq, skip_special_tokens=True)
+                    if eval_inputs['input_ids'].size(-1) >= self.generation_config.max_length:
+                        seq = []
+                        response = 'N/A'
+                    else:
+                        sequences = policy_model.module.generate(
+                            input_ids=eval_inputs['input_ids'].to(device),
+                            attention_mask=eval_inputs['attention_mask'].to(device),
+                            max_new_tokens=4,
+                            do_sample=False,
+                            output_scores=True,
+                            synced_gpus=True,
+                            return_dict_in_generate=True,
+                            pad_token_id=self.base_tokenizer.eos_token_id,
+                        )
+                        
+                        sequences, scores = sequences.sequences.cpu(), sequences.scores
+                        seq = sequences[0][eval_inputs['input_ids'].size(-1):]
+                        response = self.base_tokenizer.decode(seq, skip_special_tokens=True)
             else:
                 response = ''
             
@@ -418,12 +487,16 @@ class StepLMConfig(SearchConfig):
             else:
                 base_rewards = None
             
-            step = self.base_tokenizer.decode(action)
-            is_terminal = step.endswith(self.base_tokenizer.eos_token)
+            step = self.base_tokenizer.decode(action, skip_special_tokens=False)
+            is_terminal = step.endswith(self.base_tokenizer.eos_token) or step.endswith('<|eot_id|>')
             if is_terminal:
-                step = step[:-len(self.base_tokenizer.eos_token)]
-            texts = prompt.split(self.prompt_assistant)
-            input_txt = self.prompt_assistant.join(texts[:-1])# + PROMPT_ASSISTANT
+                step = step[:-len('<|eot_id|>' if self.model_type == 'llama3' else self.base_tokenizer.eos_token)]
+            if self.model_type == 'llama3':
+                texts = prompt.split('user\n\n')[-1].split('assistant\n\n')
+                input_txt = 'assistant\n\n'.join(texts[:-1])
+            else:
+                texts = prompt.split(self.prompt_assistant)
+                input_txt = self.prompt_assistant.join(texts[:-1]) # + PROMPT_ASSISTANT
             init_answer = texts[-1] if len(texts) > 1 else ''
             
             if input_txt.startswith(PROMPT_BEGIN):
@@ -446,19 +519,29 @@ class StepLMConfig(SearchConfig):
                     eval_prompt = REWARD_EVAL_PROMPT.format(input=input_txt, prompt=init_answer + step, 
                                                             eos_token=self.reward_tokenizer.eos_token)
                 else:
-                    input_txt = EVAL_PROMPT_USER + '\n{}'.format(input_txt.split(f'{EVAL_PROMPT_USER}')[-1].lstrip())
-                    eval_prompt = HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, prompt=init_answer + step)
-                eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + step, gt_ans, action.device)
+                    if self.model_type == 'llama3':
+                        eval_prompt_user = '<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n'
+                        input_txt = eval_prompt_user + input_txt.split(f'{eval_prompt_user}')[-1].lstrip()
+                        eval_prompt = LLAMA3_HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, 
+                                                                       prompt=init_answer + step.replace('<|eot_id|>', ''))
+                    else:
+                        eval_prompt_user = 'QUESTION:'
+                        input_txt = eval_prompt_user + input_txt.split(f'{eval_prompt_user}')[-1].lstrip()
+                        eval_prompt = HINTED_EVAL_PROMPT.format(input=input_txt, solution=solution, 
+                                                                prompt=init_answer + step)
+                
+                eval_result, eval_conf, eval_correct_score = \
+                    _eval(eval_prompt.lstrip(), init_answer + step.replace('<|eot_id|>', ''), gt_ans, action.device)
             
             print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             if self.use_code and is_terminal:
                 pred = extract_answer(prompt.split(self.prompt_assistant)[-1] + step, use_code=self.use_code)
                 print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
+            if score == 0: score = parent_value
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
-                if self.n_actions < 2 or parent_depth > 1 or eval_correct_score <= 0 or not self.use_mcq:
+                if self.n_actions < 2 or parent_depth > 0 or eval_correct_score <= 0 or not self.use_mcq:
                     score += eval_correct_score
-
             outputs.append((score, base_rewards, is_terminal))
         return outputs
 

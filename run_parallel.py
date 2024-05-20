@@ -7,8 +7,7 @@ from concurrent.futures import ProcessPoolExecutor as Pool
 
 def main(argv):
     gpu_id, fname = argv
-    if gpu_id:
-        time.sleep(800)
+    time.sleep(500 * gpu_id)
     completed_process = subprocess.run(["bash", fname, f'{gpu_id}'], 
                                        capture_output=True, 
                                        text=True)

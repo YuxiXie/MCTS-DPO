@@ -37,6 +37,8 @@ from mcts_rl.utils import (
     math_equal,
     extract_answer,
     csr_equal,
+    calculate_preference_confidence,
+    get_final_qa_index,
 )
 from mcts_rl.configs.constants import PROMPT_ASSISTANT, PROMPT_BEGIN
 from mcts_rl.algorithms.mcts.mcts import (
@@ -79,6 +81,7 @@ class MCTSTrainer(TSRLTrainer):
             temperature=self.args.temperature,
             init_temperature=self.args.init_temperature,
             get_tp_zero=self.args.get_tp_zero,
+            model_type=self.args.model_type,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -96,7 +99,6 @@ class MCTSTrainer(TSRLTrainer):
             search_algo=mcts_algo,
         )
     
-    @torch.no_grad()
     def tree_constructor(self, prompt_only_batch: PromptOnlyBatch | PromptOnlyPostBatch) -> list[dict[str, Any]]:
         """Rollout a batch of experiences."""
         input_ids = prompt_only_batch['input_ids']
@@ -106,10 +108,17 @@ class MCTSTrainer(TSRLTrainer):
         seq, attn_msk = input_ids[0], attention_mask[0]
         gt_answer, solution = answer[0], prompt_only_batch['reasoning'][0]
         
+        if solution.strip():
+            self.mcts_searcher.search_config.generation_config.max_new_tokens = min(
+                self.args.max_new_tokens,
+                max(self.generation_config.max_new_tokens // 4,
+                    len(self.tokenizer.encode(solution)) // max(1, self.args.depth_limit - 1))
+            )
+        
         self.mcts_searcher.search_config.use_code = ('\nprint(' in solution)
         if self.mcts_searcher.search_algo.policy_model is None or self.global_step % self.args.iteration_interval == 0:
             self.mcts_searcher.search_algo.policy_model = self.actor_reference_model if self.args.offline else self.actor_model
-        target_probs, Q_values, r_values, base_values, select_indexes = [], [], [], [], []
+        target_probs, Q_values, r_values, base_values, visit_counts, select_indexes = [], [], [], [], [], []
         cur_node = None
         while cur_node is None or not cur_node.is_terminal:
             if cur_node is not None and self.tokenizer.eos_token_id in cur_node.action:
@@ -126,6 +135,7 @@ class MCTSTrainer(TSRLTrainer):
             Q_values.append([child.Q for child in cur_node.children])
             r_values.append([child.r for child in cur_node.children])
             base_values.append([child.value for child in cur_node.children])
+            visit_counts.append([child.N for child in cur_node.children])
             
             cur_node = cur_node.children[mcts_rst.next_action_idx]
             select_indexes.append(mcts_rst.next_action_idx)
@@ -141,14 +151,15 @@ class MCTSTrainer(TSRLTrainer):
                 Q_values=Q_values,
                 r_values=r_values,
                 base_values=base_values,
+                visit_counts=visit_counts,
                 select_indexes=select_indexes,
                 cur_node=mcts_rst.tree_state,
                 solution=(solution, gt_answer,),
+                cur_max_new_tokens=self.mcts_searcher.search_config.generation_config.max_new_tokens,
             )
             for idx in range(input_ids.size(0))
         ]
     
-    @torch.no_grad()
     def post_tree_construct(
         self,
         prompt: torch.Tensor,
@@ -156,9 +167,11 @@ class MCTSTrainer(TSRLTrainer):
         Q_values: list[list[float]],
         r_values: list[list[float]],
         base_values: list[list[float]],
+        visit_counts: list[list[int]],
         select_indexes: list[int],
         cur_node: MCTSNode,
         solution: tuple = None,
+        cur_max_new_tokens: int = 32,
     ) -> dict[str, Any]:
         exec(f'''import pickle\nwith open('{self.args.output_dir}/mcts_rst.pkl', 'wb') as f: \n    pickle.dump(cur_node, f)''')
         
@@ -177,9 +190,10 @@ class MCTSTrainer(TSRLTrainer):
                 next_completions.append(torch.cat(next_completion, dim=-1))
             
             # record the scores: \pi (visiting count), Q values, advantages (relative values), base/init (absolute) values
-            scores = [(q, s, r, bv) for s, q, r, bv in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id],)]
+            scores = [(q, s, r, bv, vc) for s, q, r, bv, vc in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id], visit_counts[step_id])]
             _candidates = [[x[1], scores[x[0]]] for x in sorted(enumerate(next_completions), key=lambda x: scores[x[0]])]
-            init_values = [x[1][0] for x in _candidates]
+            # init_values = [x[1][0] for x in _candidates]
+            init_values = [x[1][-1] for x in _candidates]
             _candidates = [x[0] for x in _candidates]
             prompts.append(prompt)
             candidates.append(_candidates)
@@ -206,6 +220,12 @@ class MCTSTrainer(TSRLTrainer):
             ))
             mini_batches['init_value_list'].append(init_values)
         
+        if self.args.few_shot and self.args.model_type == 'gpt-j':
+            qa_idx = get_final_qa_index(mini_batches['prompts_list'][0][0])
+            mini_batches['prompts_list'] = [x[:, qa_idx:] for x in mini_batches['prompts_list']]
+            mini_batches['input_ids_list'] = [x[:, qa_idx:] for x in mini_batches['input_ids_list']]
+            mini_batches['attention_mask_list'] = [x[:, qa_idx:] for x in mini_batches['attention_mask_list']]
+        
         r = max(r_values[-1])
         is_correct = False
         if len(mini_batches['input_ids_list']):
@@ -220,6 +240,7 @@ class MCTSTrainer(TSRLTrainer):
                     is_correct = math_equal(extract_answer(prediction), extract_answer(f'{solution[0]}\nThe answer is {solution[1]}'))
         
         mini_batches['prediction'] = (r, is_correct,)
+        mini_batches['cur_max_new_tokens'] = cur_max_new_tokens
         return mini_batches
 
     @staticmethod
@@ -240,16 +261,22 @@ class MCTSTrainer(TSRLTrainer):
         prediction: tuple = None,
         init_value_list: list[float] = None,
         max_n_sample: int = 8,
+        cur_max_new_tokens: int = 32,
     ) -> dict[str, Any]:
         losses, better_sample_rewards, worse_sample_rewards, max_lengths = [], [], [], []
         n_sample = len(input_ids_list)
         start = prompts_list[0].size(-1) - 1
         better_idx = -1
         worse_idx = 0 if self.args.choose_worst else -2
+        
+        label_smoothing_values = []
+        
         for sample_id in range(n_sample):
+            if len(losses) >= max_n_sample: break
+            
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
-            # init_values = init_value_list[sample_id]
+            init_values = init_value_list[sample_id]
             # if init_values[-1] <= 0 or init_values[0] >= 1: continue
             
             n_output = input_ids.size(0)
@@ -262,22 +289,47 @@ class MCTSTrainer(TSRLTrainer):
             input_ids = torch.stack([better_input_ids, worse_input_ids], dim=0)
             attention_mask = torch.stack([better_attention_mask, worse_attention_mask], dim=0)
             
+            # torch.cuda.empty_cache()
+            # sequence_log_probs = self.compute_log_probs(
+            #     self.actor_model.module,
+            #     input_ids=input_ids,
+            #     attention_mask=attention_mask,
+            # )
+            # better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
             torch.cuda.empty_cache()
-            sequence_log_probs = self.compute_log_probs(
+            better_sequence_log_probs = self.compute_log_probs(
                 self.actor_model.module,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-            )
-            torch.cuda.empty_cache()            
-            with torch.no_grad():
-                ref_sequence_log_probs = self.compute_log_probs(
-                    self.actor_reference_model.module,
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                )
+                input_ids=better_input_ids.unsqueeze(0),
+                attention_mask=better_attention_mask.unsqueeze(0),
+            )[0]
+            torch.cuda.empty_cache()
+            worse_sequence_log_probs = self.compute_log_probs(
+                self.actor_model.module,
+                input_ids=worse_input_ids.unsqueeze(0),
+                attention_mask=worse_attention_mask.unsqueeze(0),
+            )[0]
             
-            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
-            ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[0], ref_sequence_log_probs[-1]
+            # torch.cuda.empty_cache()
+            # with torch.no_grad():
+            #     ref_sequence_log_probs = self.compute_log_probs(
+            #         self.actor_reference_model.module,
+            #         input_ids=input_ids,
+            #         attention_mask=attention_mask,
+            #     )
+            #     ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[0], ref_sequence_log_probs[-1]
+            with torch.no_grad():
+                torch.cuda.empty_cache()
+                ref_better_sequence_log_probs = self.compute_log_probs(
+                    self.actor_reference_model.module,
+                    input_ids=better_input_ids.unsqueeze(0),
+                    attention_mask=better_attention_mask.unsqueeze(0),
+                )[0]
+                torch.cuda.empty_cache()
+                ref_worse_sequence_log_probs = self.compute_log_probs(
+                    self.actor_reference_model.module,
+                    input_ids=worse_input_ids.unsqueeze(0),
+                    attention_mask=worse_attention_mask.unsqueeze(0),
+                )[0]
             
             better_end_index = better_attention_mask.nonzero()[-1]
             worse_end_index = worse_attention_mask.nonzero()[-1]
@@ -304,6 +356,15 @@ class MCTSTrainer(TSRLTrainer):
             
             if self.args.ipo:
                 losses.append((logits - 1 / (2 * self.scale_coeff)) ** 2)
+            elif self.args.conservative:
+                qb, qw = init_values[better_idx], init_values[worse_idx]
+                confidence = calculate_preference_confidence(qb, qw)
+                label_smoothing = min(1 - confidence, 0.5)
+                losses.append(
+                    - F.logsigmoid(self.scale_coeff * logits) * (1 - label_smoothing)
+                    - F.logsigmoid(-self.scale_coeff * logits) * label_smoothing
+                )
+                label_smoothing_values.append(label_smoothing)
             else:
                 losses.append(-F.logsigmoid(self.scale_coeff * logits))
             better_sample_rewards.append(self.scale_coeff * better_log_ratio.detach())
@@ -316,6 +377,7 @@ class MCTSTrainer(TSRLTrainer):
         
         loss = torch.stack(losses).mean()
         max_generated_length = torch.stack(max_lengths).max()
+        total_max_generated_length = max_generated_length + start
         better_sample_rewards = torch.stack(better_sample_rewards)  # size = (B,)
         worse_sample_rewards = torch.stack(worse_sample_rewards)  # size = (B,)
         rewards_accuracy = (
@@ -327,13 +389,8 @@ class MCTSTrainer(TSRLTrainer):
         rewards_margin = better_sample_rewards - worse_sample_rewards  # size = ()
         
         torch.cuda.empty_cache()
-        flag_loss = True
-        try:
-            self.actor_model.backward(loss)
-            self.actor_model.step()
-        except Exception as e:
-            print('\n{}'.format(str(e)))
-            flag_loss = False
+        self.actor_model.backward(loss)
+        self.actor_model.step()
         
         loss = get_all_reduce_mean(loss)
         rewards = get_all_reduce_mean(rewards)
@@ -342,6 +399,7 @@ class MCTSTrainer(TSRLTrainer):
         rewards_accuracy = get_all_reduce_mean(rewards_accuracy)
         rewards_margin = get_all_reduce_mean(rewards_margin)
         max_generated_length = get_all_reduce_max(max_generated_length)
+        total_max_generated_length = get_all_reduce_max(total_max_generated_length)
         
         return {
             'train/loss': loss.item(),
@@ -355,5 +413,8 @@ class MCTSTrainer(TSRLTrainer):
             'train/correct': float(prediction[1]),
             'train/n_sample': n_sample,
             'train/max_generated_length': max_generated_length.item(),
-        } if flag_loss else None
+            'train/total_max_generated_length': total_max_generated_length.item(),
+            'train/label_smoothing': sum(label_smoothing_values) / len(label_smoothing_values) if len(label_smoothing_values) else 0,
+            'train/cur_max_new_tokens': cur_max_new_tokens,
+        }
     

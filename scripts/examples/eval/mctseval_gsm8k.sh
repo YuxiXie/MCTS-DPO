@@ -32,6 +32,7 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-2x2-gt-qa-d3/steps2176"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/metamath-5x3/steps768"
 ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/divtree-mistral-cdpo/steps2048"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -86,7 +87,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--eval_datasets GSM8K/test \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
-	--max_length 512 \
+	--max_length 768 \
 	--repetition_penalty 1.0 \
 	--trust_remote_code True \
 	--epochs 1 \
@@ -123,5 +124,5 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--no_self_eval \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/predictions/llama3-instruct.jsonl
+	--model_type mistral \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/predictions/mistral_gsm2048.jsonl

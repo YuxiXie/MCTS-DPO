@@ -14,6 +14,8 @@ from copy import deepcopy
 from mcts_rl.algorithms.mcts.mcts.base import State, Action, Example, Args, SearchAlgorithm, WorldModel, SearchConfig
 from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks
 
+from mcts_rl.utils import calculate_diversity_score
+
 
 class MCTSConfig(NamedTuple):
     output_trace_in_each_iter: bool = False
@@ -147,14 +149,15 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         next_action_V = [child.V for child in cur_node.children]
         next_action_Q = [child.Q for child in cur_node.children]
         next_action_n_children = [len(child.children) if child.children is not None else 0 for child in cur_node.children]
+        next_action_variance = [calculate_diversity_score(child.children) for child in cur_node.children]
         
         def _cal_probs(temp):
             if temp > 0:
                 try:
-                    counts = [(x * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
-                        for x, nc in zip(visit_counts, next_action_n_children)]
-                    # counts = [((x + 2) * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
-                    #     for x, nc in zip(next_action_Q, next_action_n_children)]
+                    # counts = [(x * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
+                    #     for x, nc in zip(visit_counts, next_action_n_children)]
+                    counts = [(math.exp(x) * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
+                        for x, nc in zip(next_action_Q, next_action_n_children)]
                     total_count = float(sum(counts))
                     probs = [x / total_count for x in counts]
                     return probs
@@ -174,8 +177,16 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         
         if return_selection:
             if temperature == 0:
+                # selected_idx = max(range(len(visit_counts)), key=lambda x: (
+                #     visit_counts[x] * (next_action_n_children[x] + 1 if self.consider_diversity else 1), 
+                #     next_action_Q[x], next_action_V[x]
+                # ))
+                # selected_idx = max(range(len(visit_counts)), key=lambda x: (
+                #     (next_action_Q[x] + 2) * (next_action_variance[x] + 1 if self.consider_diversity else 1), 
+                #     visit_counts[x], next_action_V[x]
+                # ))
                 selected_idx = max(range(len(visit_counts)), key=lambda x: (
-                    visit_counts[x] * (next_action_n_children[x] + 1 if self.consider_diversity else 1), 
+                    visit_counts[x] * (next_action_variance[x] + 1 if self.consider_diversity else 1), 
                     next_action_Q[x], next_action_V[x]
                 ))
             else:
@@ -232,7 +243,8 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
             ref_log_probs_batch.append(ref_log_probs)
         reward_value_batch = self.search_config.get_values(self.policy_model, node.state, action_batch, 
                                                            log_probs_batch, ref_log_probs_batch, 
-                                                           add_kl=self.add_kl, parent_depth=node.depth)
+                                                           add_kl=self.add_kl, parent_depth=node.depth,
+                                                           parent_value=node.value)
 
         children = []
         for (action, (log_probs, ref_log_probs), embs), (value, base_rewards, is_terminal) in zip(actions, reward_value_batch):

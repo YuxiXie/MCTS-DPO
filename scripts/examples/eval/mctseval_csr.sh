@@ -31,6 +31,7 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-newevalscript/steps1536"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/csqa-gptj-4x2-evalscript/steps1408"
 ACTOR_MODEL_NAME_OR_PATH="EleutherAI/gpt-j-6B"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/divtree-gpt-j-cdpo/steps1024"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -123,4 +124,5 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--temperature 1.0 \
 	--init_temperature 1.0 \
 	--few_shot \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/predictions/csqa/mcts/gptj_baseline.jsonl
+	--model_type gpt-j \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/predictions/csqa/gptj_cdpo_step_1024.jsonl

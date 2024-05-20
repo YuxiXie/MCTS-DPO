@@ -82,13 +82,15 @@ def resize_tokenizer_embedding(tokenizer: PreTrainedTokenizerBase, model: PreTra
 
     special_tokens_dict = {}
     if tokenizer.pad_token is None:
-        special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
+        # special_tokens_dict['pad_token'] = DEFAULT_PAD_TOKEN
+        tokenizer.pad_token_id = tokenizer.eos_token_id
     if tokenizer.eos_token is None:
         special_tokens_dict['eos_token'] = DEFAULT_EOS_TOKEN
     if tokenizer.bos_token is None:
         special_tokens_dict['bos_token'] = DEFAULT_BOS_TOKEN
     if tokenizer.unk_token is None:
-        special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
+        # special_tokens_dict['unk_token'] = DEFAULT_UNK_TOKEN
+        tokenizer.unk_token_id = tokenizer.eos_token_id
 
     num_new_tokens = tokenizer.add_special_tokens(special_tokens_dict)
 

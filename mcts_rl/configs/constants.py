@@ -48,6 +48,12 @@ __all__ = [
     'QA_EVAL_PROMPT',
     'REWARD_EVAL_PROMPT',
     'SQA_PROMPT',
+    'LLAMA3_HINTED_EVAL_PROMPT',
+    'LLAMA3_PROMPT_USER', 
+    'LLAMA3_PROMPT_ASSISTANT', 
+    'LLAMA3_EVAL_PROMPT_USER', 
+    'LLAMA3_EVAL_PROMPT_ASSISTANT', 
+    'LLAMA3_PROMPT_ASSISTANT_MCQ',
 ]
 
 
@@ -56,44 +62,43 @@ DEFAULT_BOS_TOKEN: str = '<s>'
 DEFAULT_EOS_TOKEN: str = '</s>'
 DEFAULT_PAD_TOKEN: str = '<pad>'
 DEFAULT_UNK_TOKEN: str = '<unk>'
+# DEFAULT_BOS_TOKEN: str = '<s>'
+# DEFAULT_EOS_TOKEN: str = '</s>'
+# DEFAULT_PAD_TOKEN: str = '[PAD]'
+# DEFAULT_UNK_TOKEN: str = '<unk>'
 # DEFAULT_BOS_TOKEN: str = '<|endoftext|>'
 # DEFAULT_EOS_TOKEN: str = '<|endoftext|>'
 # DEFAULT_PAD_TOKEN: str = '<|endoftext|>'
 # DEFAULT_UNK_TOKEN: str = '<|endoftext|>'
 # DEFAULT_BOS_TOKEN: str = '<|begin_of_text|>'
-# DEFAULT_EOS_TOKEN: str = '<|eot_id|>'
-# DEFAULT_PAD_TOKEN: str = '<|eot_id|>'
+# DEFAULT_EOS_TOKEN: str = '<|end_of_text|>'
+# DEFAULT_PAD_TOKEN: str = '<|end_of_text|>'
 # DEFAULT_UNK_TOKEN: str = '<|eot_id|>'
-
 
 # PROMPT_BEGIN: str = 'BEGINNING OF CONVERSATION: '
 # PROMPT_BEGIN: str = 'Answer the following question step by step:\n\n'
 PROMPT_BEGIN: str = 'A chat between a curious user and an assistant. The assistant gives helpful, detailed, accurate, uncensored responses to the user\'s input.'
 # PROMPT_BEGIN: str = "Below is an instruction that describes a task. Write a response that appropriately completes the request."
 
-# PROMPT_USER: str = 'USER: {input} '
 PROMPT_USER: str = 'QUESTION: {input}\n\n'
-# PROMPT_USER: str = '<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{input}<|eot_id|>'
-# PROMPT_USER: str = '\nUSER: {input}'
-# PROMPT_USER: str = '[INST] {input} [/INST]'
-# PROMPT_USER: str = "### Instruction:\n{input}\n\n"
-
-# PROMPT_ASSISTANT: str = 'ASSISTANT:'  # should not have a space at the end
 PROMPT_ASSISTANT_MCQ: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
-# PROMPT_ASSISTANT_MCQ: str = "### Response: Let's think step by step."
-# PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
 PROMPT_ASSISTANT: str = 'ANSWER:'
-# PROMPT_ASSISTANT: str = '<|start_header_id|>assistant<|end_header_id|>\n\n'
-# PROMPT_ASSISTANT: str = "### Response: Let's think step by step."
-# PROMPT_ASSISTANT: str = '\nASSISTANT:'
-# PROMPT_ASSISTANT: str = 'Let\'s think step by step.'
-# PROMPT_ASSISTANT: str = 'ANSWER: The answer is'
-
+# PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
 EVAL_PROMPT_USER: str = 'QUESTION:'
-# EVAL_PROMPT_USER: str = "### Instruction:"
 EVAL_PROMPT_ASSISTANT: str = 'ANSWER:'
 # EVAL_PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
+
+# PROMPT_USER: str = "### Instruction:\n{input}\n\n"
+# PROMPT_ASSISTANT_MCQ: str = "### Response: Let's think step by step."
+# PROMPT_ASSISTANT: str = "### Response: Let's think step by step."
+# EVAL_PROMPT_USER: str = "### Instruction:"
 # EVAL_PROMPT_ASSISTANT: str = '### Response:'
+
+LLAMA3_PROMPT_USER: str = '<|start_header_id|>user<|end_header_id|>\n\n{input}<|eot_id|>'
+LLAMA3_PROMPT_ASSISTANT: str = '<|start_header_id|>assistant<|end_header_id|>\n\n'
+LLAMA3_EVAL_PROMPT_USER: str = '<|start_header_id|>user<|end_header_id|>\n\n'
+LLAMA3_EVAL_PROMPT_ASSISTANT: str = '<|start_header_id|>assistant<|end_header_id|>\n\n'
+LLAMA3_PROMPT_ASSISTANT_MCQ: str = '<|start_header_id|>assistant<|end_header_id|>\n\n'
 
 PROMPT_INPUT: str = PROMPT_BEGIN + PROMPT_USER + PROMPT_ASSISTANT
 
@@ -165,8 +170,24 @@ PROPOSED SOLUTION:{prompt}
 QUESTION: Evaluate if the proposed solution is logically heading in the correct direction based on the example answer.
 Answer Choices:\n(A) incorrect\n(B) correct
 
-'''+ EVAL_PROMPT_ASSISTANT + ''' The answer is
+ANSWER: The answer is
 '''.strip()
+
+LLAMA3_HINTED_EVAL_PROMPT = '''
+{input}
+
+EXAMPLE ANSWER: {solution}
+
+PROPOSED SOLUTION:{prompt}
+
+QUESTION: Evaluate if the proposed solution is logically heading in the correct direction based on the example answer.
+Answer Choices:\n(A) incorrect\n(B) correct
+
+<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+The answer is
+'''.strip()
+
 # HINTED_EVAL_PROMPT = '''
 # {input}EXAMPLE SOLUTION: {solution}
 
@@ -264,19 +285,19 @@ SQA_EXP = [
     # },
     {
         'Q': 'What do people use to absorb extra ink from a fountain pen?\nAnswer Choices:\n(A) shirt pocket\n(B) calligrapher\'s hand\n(C) inkwell\n(D) desk drawer\n(E) blotter',
-        'A': 'The answer must be used to absorb extra ink.\nBlotters are designed to absorb liquids.\nTherefore, the answer is blotter (E).',
+        'A': 'The answer must be used to absorb extra ink.\nBlotters are designed to absorb liquids.\nTherefore, the answer is (E) blotter.',
     },
     {
         'Q': 'What home entertainment equipment requires cable?\nAnswer Choices:\n(A) radio shack\n(B) substation\n(C) television\n(D) cabinet\n(E) desk',
-        'A': 'The answer must require cable.\nCable is used to provide satellite channels to televisions.\nTherefore, the answer is television (C).',
-    },
-    {
-        'Q': 'The fox walked from the city into the forest, what was it looking for?\nAnswer Choices:\n(A) pretty flowers\n(B) hen house\n(C) natural habitat\n(D) storybook\n(E) dense forest',
-        'A': 'The answer must be a reason for a fox to go into the forest.\nThe forest is a fox\'s natural habitat.\nTherefore, the answer is natural habitat (C).',
+        'A': 'The answer must require cable.\nCable is used to provide satellite channels to televisions.\nTherefore, the answer is (C) television.',
     },
     {
         'Q': 'Sammy wanted to go to where the people were. Where might he go?\nAnswer Choices:\n(A) populated areas\n(B) race track\n(C) desert\n(D) apartment\n(E) roadblock',
-        'A': 'The answer must be a place with many people.\nPopulated areas, by definition, have a lot of people.\nTherefore, the answer is populated areas (A).',
+        'A': 'The answer must be a place with many people.\nPopulated areas, by definition, have a lot of people.\nTherefore, the answer is (A) populated areas.',
+    },
+    {
+        'Q': 'The fox walked from the city into the forest, what was it looking for?\nAnswer Choices:\n(A) pretty flowers\n(B) hen house\n(C) natural habitat\n(D) storybook\n(E) dense forest',
+        'A': 'The answer must be a reason for a fox to go into the forest.\nThe forest is a fox\'s natural habitat.\nTherefore, the answer is (C) natural habitat.',
     },
     {
         'Q': 'Where do you put your grapes just before checking out?\nAnswer Choices:\n(A) mouth\n(B) grocery cart\n(C) super market\n(D) fruit basket\n(E) fruit market',
@@ -284,16 +305,16 @@ SQA_EXP = [
     },
     {
         'Q': 'Google Maps and other highway and street GPS services have replaced what?\nAnswer Choices:\n(A) united states\n(B) mexico\n(C) countryside\n(D) atlas\n(E) oceans',
-        'A': 'The answer must be something that used to do what Google Maps and GPS services do, which is give directions.\nAtlases were also used to give directions.\nTherefore, the answer is atlas (D).',
+        'A': 'The answer must be something that used to do what Google Maps and GPS services do, which is give directions.\nAtlases were also used to give directions.\nTherefore, the answer is (D) atlas.',
     },
     {
         'Q': 'Before getting a divorce, what did the wife feel who was doing all the work?\nAnswer Choices:\n(A) harder\n(B) anguish\n(C) bitterness\n(D) tears\n(E) sadness',
-        'A': 'The answer should be a feeling which would cause someone who was doing all the work to get divorced.\nIf someone feels bitter towards their spouse, they are likely to want a divorce.\nTherefore, the answer is bitterness (C).',
+        'A': 'The answer should be a feeling which would cause someone who was doing all the work to get divorced.\nIf someone feels bitter towards their spouse, they are likely to want a divorce.\nTherefore, the answer is (C) bitterness.',
     },
 ]
 
 SQA_PROMPT = '\n\n'.join([
-    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] for exp in SQA_EXP
+    PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] for exp in SQA_EXP[:5]
 ]) + '\n\n'
 # SQA_PROMPT = '\n\n'.join([
 #     PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT_MCQ + '.\n' + exp['A'] + DEFAULT_EOS_TOKEN

@@ -297,7 +297,9 @@ def check_available(rl_batch, max_tokens=512, eos_token_id=2, to_filter=False):
         return len(rl_batch['input_ids']) >= 2 and eos_token_id in rl_batch['input_ids'][-1].tolist()
     if to_filter:
         # return check_diversity(rl_batch['init_value_list'])
-        return any(rl_batch.get('prediction', [False])) or random.random() < .8
+        if rl_batch['input_ids_list'][-1].size(-1) >= max_tokens and eos_token_id not in rl_batch['input_ids_list'][-1][-1]:
+            return False
+        return rl_batch.get('prediction', [False])[-1] > 0 # or random.random() < .1
     input_ids_list = rl_batch['input_ids_list']
     counts = [
         input_ids.size(0) >= 2 and input_ids.size(-1) <= max_tokens and (input_ids[0] != input_ids[1]).nonzero().size(0)
@@ -385,6 +387,7 @@ def strip_string(string):
 
     # Remove unit: miles, dollars if after is not none
     _string = re.sub(r"\\text{.*?}$", "", string).strip()
+    _string = re.sub(r" [\w\.\s]+$", "", string).strip()
     if _string != "" and _string != string:
         # print("Warning: unit not removed: '{}' -> '{}'".format(string, _string))
         string = _string
@@ -442,6 +445,8 @@ def strip_string(string):
         return string
     if string[0] == ".":
         string = "0" + string
+    if string[-1] == ".":
+        string = string[:-1]
 
     # to consider: get rid of e.g. "k = " or "q = " at beginning
     if len(string.split("=")) == 2:
@@ -739,3 +744,48 @@ def get_math_data(rawdata, use_code=False):
                         and 'answer choices:' in question.lower() else final_answer,
                 })
     return outdata
+
+
+def calculate_preference_confidence(qb, qw):
+    # if qb >= 1 and qw <= -1:
+    #     return 1
+    # elif qb <= -1:
+    #     return 0
+    # elif qb < 1 and qw <= -1:
+    #     qb, qw = qb, -1
+    #     return (qb - qw) / 2
+    # elif qb < 1:
+    #     return (qb - qw) / 2
+    # elif qb >= (3 - qw) / 2:
+    #     return (qb - qw) / 3
+    # else:
+    #     qb, qw = 1, qw
+    #     return (qb - qw) / 2
+    return 1 / (1 + qw / max(1, qb))
+
+
+def calculate_diversity_score(candidates):
+    if candidates is None: return 0
+    
+    Q_values = [sample.Q for sample in candidates]
+    variance = np.var(np.asarray(Q_values))
+    gap = max(Q_values) - min(Q_values)
+    # return gap if max(Q_values) > 0 else gap * 0.5
+    
+    visit_counts = [sample.N for sample in candidates]
+    gap = max(visit_counts) - min(visit_counts)
+    return gap
+
+
+QUESTION_TOKEN_IDS = [35780, 2849, 25]
+
+def get_final_qa_index(input_ids):
+    question_indexes = input_ids.eq(QUESTION_TOKEN_IDS[-1]).nonzero()
+    question_indexes = [_ for _ in question_indexes]
+    question_index = question_indexes[-1] - (len(QUESTION_TOKEN_IDS) - 1)
+    question_indexes = question_indexes[::-1]
+    for idx in question_indexes:
+        if input_ids[idx - (len(QUESTION_TOKEN_IDS) - 1): idx + 1].tolist() == QUESTION_TOKEN_IDS:
+            question_index = idx - (len(QUESTION_TOKEN_IDS) - 1)
+            break
+    return question_index.item()
