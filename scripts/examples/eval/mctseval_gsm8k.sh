@@ -31,8 +31,8 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-2x2-gt-qa-d3/steps2176"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/metamath-5x3/steps768"
-ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/divtree-mistral-cdpo/steps2048"
+# ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/llama3-cdpo-fullsft/steps1088"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
 OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
@@ -124,5 +124,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--mcts_temperature 0.0 \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
-	--model_type mistral \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/predictions/mistral_gsm2048.jsonl
+	--model_type llama3 \
+	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/predictions/mistral_llama3-cdpo-fullsft_gsm1088.jsonl
+
+# bash scripts/examples/eval/mctseval_gsm8k.sh

@@ -27,15 +27,14 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-# ACTOR_MODEL_NAME_OR_PATH="meta-math/MetaMath-Mistral-7B"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-5x3-qa"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-2x2-d3stop-qa/steps2176"
-# ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
-ACTOR_REF_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/gpt-j-cdpo-reverse/steps896"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/csqa-gptj-4x3-dpo/steps512"
+# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/csr/sim16-4x2-t1-noeval/steps768"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/sqa/cdpo-4x2-it32/steps2688"
+ACTOR_REF_MODEL_NAME_OR_PATH="upaya07/Arithmo2-Mistral-7B"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/arithmetic/llama3-cdpo-instancelevel"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/sqa/cdpo-4x2-it32"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -83,58 +82,58 @@ gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
-	--train_datasets MathQA/train \
-	--model_type llama3 \
-	--choose_worst \
+	--train_datasets SQA/train \
+	--model_type mistral \
 	--save_mcts_data \
+	--choose_worst \
+	--use_mcq \
 	--filter \
 	--conservative \
-	--iteration_interval 32 \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
-	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
+    --resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
 	--max_length 512 \
-	--temperature 1.25 \
+	--temperature 1.0 \
 	--init_temperature 1.0 \
-	--mcts_length_penalty 2.0 \
 	--num_return_sequences 1 \
 	--repetition_penalty 1.0 \
+	--mcts_length_penalty 1.25 \
 	--trust_remote_code True \
 	--epochs 1 \
 	--update_iters 1 \
-	--save_interval 128 \
+	--save_interval 64 \
 	--per_device_ptx_batch_size 4 \
 	--per_device_prompt_batch_size 1 \
 	--per_device_train_batch_size 1 \
 	--gradient_accumulation_steps 64 \
-	--actor_lr 1e-5 \
+	--actor_lr 2e-6 \
 	--actor_weight_decay 0.05 \
 	--actor_lr_scheduler_type cosine \
-	--actor_lr_warmup_ratio 0.1 \
+	--actor_lr_warmup_ratio 0.2 \
 	--actor_gradient_checkpointing \
 	--seed 42 \
 	--kl_coeff 0.02 \
 	--clip_range_ratio 0.2 \
 	--clip_range_score 50.0 \
 	--clip_range_value 5.0 \
-	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-IPL-Math-yuxi \
+	--log_project MCTS-IPL-SQA-yuxi \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 300 \
+	--max_new_tokens 32 \
 	--n_iters 32 \
-	--depth_limit 1 \
-	--n_init_actions 8 \
-	--n_actions 1 \
-	--force_terminating_on_depth_limit \
+	--depth_limit 4 \
+	--n_init_actions 4 \
+	--n_actions 2 \
 	--mcts_temperature 0.0
 
-# --no_self_eval
+# --force_terminating_on_depth_limit \
 # --per_device_eval_batch_size 1 \
 # --need_eval \
 # --eval_datasets PRM800K/test \
+
+bash scripts/examples/mcts_csr.sh $1

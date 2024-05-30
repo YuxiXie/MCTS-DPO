@@ -59,6 +59,7 @@ class SearchArgs(NamedTuple):
     temperature: float = 1.0
     get_tp_zero: bool = False
     model_type: str = 'mistral'
+    include_gt: bool = True
 
 
 class StepLMConfig(SearchConfig):
@@ -101,6 +102,8 @@ class StepLMConfig(SearchConfig):
         self.model_type = args.model_type
         if self.model_type == 'llama3':
             self.prompt_assistant = LLAMA3_PROMPT_ASSISTANT_MCQ if self.use_mcq else LLAMA3_PROMPT_ASSISTANT
+            
+        self.include_gt = args.include_gt
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -167,7 +170,7 @@ class StepLMConfig(SearchConfig):
         terminators = [self.base_tokenizer.eos_token_id]
         terminators += [self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.model_type == 'llama3' else []        
         for _ in trange(n_actions, disable=self.disable_tqdm, desc='Expand: action generation', leave=False):
-            cur_max_new_tokens = self.generation_config.max_new_tokens
+            cur_max_new_tokens = self.generation_config.max_new_tokens + (0 if self.use_mcq else 16)
             if (not self.get_tp_zero) or unique_text_list or prompt.startswith(PROMPT_BEGIN):
                 cur_max_new_tokens = (self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else cur_max_new_tokens
                 cur_max_new_tokens = max(1, min(cur_max_new_tokens, self.generation_config.max_length - input_ids.size(-1)))
@@ -252,7 +255,7 @@ class StepLMConfig(SearchConfig):
                     any(x in ''.join(sentences) for x in ["<|eot_id|>", self.base_tokenizer.eos_token])):
                     # reach a terminate state
                     sents = sentences
-                elif self.n_actions > 1:
+                elif self.n_actions > 1 and len(self.base_tokenizer.encode(' '.join(sentences[:-1]))) >= cur_max_new_tokens * 7/8:
                     sents = sentences[:-1]
                 else:
                     sents = sentences
@@ -279,7 +282,7 @@ class StepLMConfig(SearchConfig):
                 sequences_list.append(gen_ids)
                 unique_text_list.append(text)
         
-        if not self.use_mcq and self.example.get('reasoning', ''):
+        if self.include_gt and not self.use_mcq and self.example.get('reasoning', ''):
             pre_gen = prompt.split(LLAMA3_EVAL_PROMPT_ASSISTANT)[-1] if self.model_type == 'llama3' else prompt.split(EVAL_PROMPT_ASSISTANT)[-1]
             newline_flag = True
             _solution_steps = regex.split(r'[\n]+', self.example['reasoning'].strip())
@@ -290,7 +293,7 @@ class StepLMConfig(SearchConfig):
                 _solution_steps.append("The answer is {}{}".format(self.example['answer'], "<|eot_id|>" if self.model_type == 'llama3' else self.base_tokenizer.eos_token))
             solution_steps = []
             for i, x in enumerate(_solution_steps):
-                if newline_flag and i < len(solution_steps) - 1:
+                if newline_flag and i < len(_solution_steps) - 1:
                     solution_steps.append(f'{x}\n')
                 elif not newline_flag and i > 0:
                     solution_steps.append(f' {x}')
@@ -505,11 +508,27 @@ class StepLMConfig(SearchConfig):
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + ' ' + step, None, action.device)
             else:
                 if self.example['reasoning'] and self.example['reasoning'] != self.example['answer_content']:
-                    if self.use_code:
-                        solution = self.example["reasoning"]
-                    else:
-                        solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
-                            else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
+                    newline_flag = True
+                    _solution_steps = regex.split(r'[\n]+', self.example['reasoning'].strip())
+                    if len(_solution_steps) < 2 and not self.use_code:
+                        _solution_steps = sent_tokenize(self.example['reasoning'].strip())
+                        newline_flag = False
+                    if not self.use_code:
+                        _solution_steps.append("The answer is {}{}".format(self.example['answer'], "<|eot_id|>" if self.model_type == 'llama3' else self.base_tokenizer.eos_token))
+                    solution_steps = []
+                    for i, x in enumerate(_solution_steps):
+                        if newline_flag and i < len(_solution_steps) - 1:
+                            solution_steps.append(f'{x}\n')
+                        elif not newline_flag and i > 0:
+                            solution_steps.append(f' {x}')
+                        else:
+                            solution_steps.append(x)
+                    solution = ''.join(solution_steps)
+                    # if self.use_code:
+                    #     solution = self.example["reasoning"]
+                    # else:
+                    #     solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
+                    #         else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
                     gt_ans = self.example["answer"]
                 else:
                     gt_ans = [f"({self.example['answer']})", self.example['answer_content']] \
@@ -532,6 +551,9 @@ class StepLMConfig(SearchConfig):
                 
                 eval_result, eval_conf, eval_correct_score = \
                     _eval(eval_prompt.lstrip(), init_answer + step.replace('<|eot_id|>', ''), gt_ans, action.device)
+                if self.example['reasoning'] and not self.use_mcq and eval_correct_score >= 1:
+                    if not solution.strip().startswith((init_answer + step).strip()):
+                        eval_correct_score *= 5/4
             
             print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             if self.use_code and is_terminal:
@@ -541,7 +563,7 @@ class StepLMConfig(SearchConfig):
             if score == 0: score = parent_value
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
                 if self.n_actions < 2 or parent_depth > 0 or eval_correct_score <= 0 or not self.use_mcq:
-                    score += eval_correct_score
+                    score += eval_correct_score if parent_depth > 1 or not self.use_mcq or eval_correct_score <= 0 else eval_correct_score * 0.5
             outputs.append((score, base_rewards, is_terminal))
         return outputs
 

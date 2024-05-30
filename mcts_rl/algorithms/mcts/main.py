@@ -391,6 +391,11 @@ def parse_arguments() -> argparse.Namespace:
         default=False,
     )
     mcts_parser.add_argument(
+        '--not_include_gt',
+        action='store_true',
+        default=False,
+    )
+    mcts_parser.add_argument(
         '--n_iters',
         type=int,
         default=5,

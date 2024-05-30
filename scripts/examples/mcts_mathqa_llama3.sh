@@ -31,12 +31,11 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-5x3-qa"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-sim32-2x2-d3stop-qa/steps2176"
 # ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-# ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/llama3-cdpo-fullsft/steps1024"
+ACTOR_REF_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
 REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
 unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/cdpo-fullsft-it16"
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/llama3-cdpo-fullsft"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -76,22 +75,23 @@ exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log
 
 export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
 export WANDB_MODE=online
-
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
+export NCCL_P2P_LEVEL=NVL
 
 gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
 	--train_datasets MathQA/train \
-	--model_type mistral \
+	--model_type llama3 \
 	--choose_worst \
 	--save_mcts_data \
 	--filter \
-	--iteration_interval 32 \
+	--iteration_interval 64 \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
+	--resume_from_ckpt "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
 	--max_length 512 \
 	--temperature 1.0 \
@@ -126,15 +126,14 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
 	--tf32 True \
-	--max_new_tokens 100 \
-	--n_iters 16 \
+	--max_new_tokens 128 \
+	--n_iters 64 \
 	--depth_limit 3 \
 	--n_init_actions 2 \
 	--n_actions 2 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
 
-# --no_self_eval
-# --per_device_eval_batch_size 1 \
-# --need_eval \
-# --eval_datasets PRM800K/test \
+
+
+bash scripts/examples/mcts_mathqa_llama3.sh $1

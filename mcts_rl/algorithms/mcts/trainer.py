@@ -82,6 +82,7 @@ class MCTSTrainer(TSRLTrainer):
             init_temperature=self.args.init_temperature,
             get_tp_zero=self.args.get_tp_zero,
             model_type=self.args.model_type,
+            include_gt=(not self.args.not_include_gt),
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -121,7 +122,7 @@ class MCTSTrainer(TSRLTrainer):
         target_probs, Q_values, r_values, base_values, visit_counts, select_indexes = [], [], [], [], [], []
         cur_node = None
         while cur_node is None or not cur_node.is_terminal:
-            if cur_node is not None and self.tokenizer.eos_token_id in cur_node.action:
+            if cur_node is not None and (self.tokenizer.eos_token_id in cur_node.action or self.tokenizer.convert_tokens_to_ids("<|eot_id|>") in cur_node.action):
                 cur_node.is_terminal = True
                 break
             # MCTS for next step
@@ -211,8 +212,9 @@ class MCTSTrainer(TSRLTrainer):
         for prompt, next_completions, init_values in zip(prompts, candidates, init_value_list):
             prompt = torch.stack([prompt for _ in next_completions], dim=0)
             next_completions = pad_sequence(next_completions, batch_first=True, padding_value=self.tokenizer.pad_token_id)
-            mini_batches['prompts_list'].append(prompt)
             input_ids = torch.cat((prompt, next_completions), dim=-1)
+            if input_ids.size(-1) > self.generation_config.max_length: continue
+            mini_batches['prompts_list'].append(prompt)
             mini_batches['input_ids_list'].append(input_ids)
             mini_batches['attention_mask_list'].append(torch.logical_and(
                 input_ids.not_equal(self.tokenizer.pad_token_id),
