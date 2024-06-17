@@ -33,7 +33,7 @@ __all__ = [
     'MathQACodeTestDataset',
 ]
 
-DATA_DIR = "/home/users/nus/e0672129/scratch"
+DATA_DIR = "/mnt/data/yuxi/math"
 
 
 class MathQADataset(RawDataset):
@@ -72,7 +72,7 @@ class MathQADataset(RawDataset):
             try:
                 arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
             except:
-                arithmo = get_math_data(jsonlines_load('/home/users/nus/e0672129/scratch/arithmo/train.jsonl'))
+                arithmo = get_math_data(jsonlines_load('/mnt/data/yuxi/math/arithmo/arithmo_train.jsonl'))
             self.data = gsm8k + math #+ list(random.sample(arithmo, min(len(gsm8k + math), len(arithmo))))
 
     def __getitem__(self, index: int) -> RawSample:

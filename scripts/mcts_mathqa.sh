@@ -27,59 +27,14 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-# MODEL_NAME_OR_PATH="facebook/opt-2.7b"
-# MODEL_NAME_OR_PATH="meta-llama/Llama-2-7b-hf"
-# ACTOR_MODEL_NAME_OR_PATH="mistralai/Mistral-7B-v0.1"
-MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo/steps16806"
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/llama2-arithmo"
+
+ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+
+OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/cdpo-fullsft"
 unset HOSTFILE
 ZERO_STAGE=3
-OFFLOAD="all"
-while [[ "$#" -gt 0 ]]; do
-	arg="$1"
-	shift
-	case "${arg}" in
-		--model_name_or_path)
-			MODEL_NAME_OR_PATH="$1"
-			shift
-			;;
-		--model_name_or_path=*)
-			MODEL_NAME_OR_PATH="${arg#*=}"
-			;;
-		--output_dir)
-			OUTPUT_DIR="$1"
-			shift
-			;;
-		--output_dir=*)
-			OUTPUT_DIR="${arg#*=}"
-			;;
-		--hostfile)
-			HOSTFILE="$1"
-			shift
-			;;
-		--hostfile=*)
-			HOSTFILE="${arg#*=}"
-			;;
-		--zero_stage)
-			ZERO_STAGE="$1"
-			shift
-			;;
-		--zero_stage=*)
-			ZERO_STAGE="${arg#*=}"
-			;;
-		--offload)
-			OFFLOAD="$1"
-			shift
-			;;
-		--offload=*)
-			OFFLOAD="${arg#*=}"
-			;;
-		*)
-			echo "Unknown parameter passed: '${arg}'" >&2
-			exit 1
-			;;
-	esac
-done
+OFFLOAD="optimizer"
 
 mkdir -p "${OUTPUT_DIR}"
 OUTPUT_DIR="$(cd "${OUTPUT_DIR}" &>/dev/null && pwd)"
@@ -110,42 +65,62 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
-export WANDB_API_KEY="1396a7d2a29a8e8241dff6e0e6371f2ad61e11e2"
+export WANDB_API_KEY=""
 export WANDB_MODE=online
 
-# export NCCL_P2P_DISABLE=1
-# export NCCL_IB_DISABLE=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=0,1,2,3
+gpu_vis=$1
 
-# deepspeed "${DEEPSPEED_ARGS[@]}" \
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
-	--module mcts_rl.finetune \
-	--train_datasets Arithmo/train \
-	--eval_datasets Arithmo/test \
-	--model_name_or_path "${MODEL_NAME_OR_PATH}" \
-	--resume_from_ckpt "${MODEL_NAME_OR_PATH}" \
+	--module mcts_rl.algorithms.mcts \
+	--train_datasets MathQA/train \
+	--model_type mistral \
+	--choose_worst \
+	--save_mcts_data \
+	--filter \
+	--iteration_interval 64 \
+	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
+	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
+	--scale_coeff 0.1 \
 	--max_length 512 \
+	--temperature 1.0 \
+	--init_temperature 1.0 \
+	--mcts_length_penalty 1.25 \
+	--num_return_sequences 1 \
+	--repetition_penalty 1.0 \
 	--trust_remote_code True \
-	--epochs 3 \
-	--per_device_train_batch_size 16 \
-	--per_device_eval_batch_size 16 \
-	--gradient_accumulation_steps 4 \
-	--gradient_checkpointing \
-	--learning_rate 2e-5 \
-	--lr_scheduler_type cosine \
-	--lr_warmup_ratio 0.03 \
-	--weight_decay 0.0 \
+	--epochs 1 \
+	--conservative \
+	--update_iters 1 \
+	--save_interval 64 \
+	--per_device_ptx_batch_size 4 \
+	--per_device_prompt_batch_size 1 \
+	--per_device_train_batch_size 1 \
+	--gradient_accumulation_steps 64 \
+	--actor_lr 1e-6 \
+	--actor_weight_decay 0.05 \
+	--actor_lr_scheduler_type cosine \
+	--actor_lr_warmup_ratio 0.03 \
+	--actor_gradient_checkpointing \
 	--seed 42 \
-	--need_eval \
-	--eval_strategy steps \
-	--eval_interval 2500 \
+	--kl_coeff 0.02 \
+	--clip_range_ratio 0.2 \
+	--clip_range_score 50.0 \
+	--clip_range_value 5.0 \
+	--ptx_coeff 0.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project SFT-MATH \
+	--log_project MCTS-IPL-Math \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
-	--tf32 True
+	--tf32 True \
+	--max_new_tokens 128 \
+	--n_iters 64 \
+	--depth_limit 3 \
+	--n_init_actions 2 \
+	--n_actions 2 \
+	--force_terminating_on_depth_limit \
+	--mcts_temperature 0.0
