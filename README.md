@@ -3,7 +3,7 @@
 This repository contains code and analysis for the paper: [Monte Carlo Tree Search Boosts Reasoning via Iterative Preference Learning](https://arxiv.org/abs/2405.00451). 
 Below is the framework of our proposed method (on the left) together with a prompting example of self-evaluation (on the right).
 
-![Model Framework](framework-colorblindfriendly.png)
+![Model Framework](framework-colorblindfriendly.jpg)
 
 #### Environment Setup
 
