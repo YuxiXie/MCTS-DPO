@@ -1,18 +1,3 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 from __future__ import annotations
 
 from typing import Any
@@ -23,14 +8,12 @@ from torch.nn.utils.rnn import pad_sequence
 import torch.distributed as dist
 import torch.nn.functional as F
 from transformers import AutoModelForCausalLM
-from transformers.tokenization_utils import TruncationStrategy
 
 from mcts_rl.datasets import (
     PromptOnlyBatch, PromptOnlyPostBatch,
 )
 from mcts_rl.trainers import TSRLTrainer
 from mcts_rl.utils import (
-    batch_retokenize,
     gather_log_probabilities,
     get_all_reduce_max,
     get_all_reduce_mean,
@@ -193,8 +176,7 @@ class MCTSTrainer(TSRLTrainer):
             # record the scores: \pi (visiting count), Q values, advantages (relative values), base/init (absolute) values
             scores = [(q, s, r, bv, vc) for s, q, r, bv, vc in zip(target_probs[step_id], Q_values[step_id], r_values[step_id], base_values[step_id], visit_counts[step_id])]
             _candidates = [[x[1], scores[x[0]]] for x in sorted(enumerate(next_completions), key=lambda x: scores[x[0]])]
-            # init_values = [x[1][0] for x in _candidates]
-            init_values = [x[1][-1] for x in _candidates]
+            init_values = [x[1][-1] for x in _candidates]   ## using visit count
             _candidates = [x[0] for x in _candidates]
             prompts.append(prompt)
             candidates.append(_candidates)

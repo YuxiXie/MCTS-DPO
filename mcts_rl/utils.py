@@ -1,17 +1,5 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+# Adapted from: https://github.com/PKU-Alignment/safe-rlhf/blob/main/safe_rlhf/utils.py
+
 """Miscellaneous utilities."""
 
 from __future__ import annotations
@@ -747,22 +735,10 @@ def get_math_data(rawdata, use_code=False):
                 })
     return outdata
 
+def get_arithmo_data(mathqa_dict):
+    return [random.choice(v) for v in mathqa_dict.values()]
 
 def calculate_preference_confidence(qb, qw):
-    # if qb >= 1 and qw <= -1:
-    #     return 1
-    # elif qb <= -1:
-    #     return 0
-    # elif qb < 1 and qw <= -1:
-    #     qb, qw = qb, -1
-    #     return (qb - qw) / 2
-    # elif qb < 1:
-    #     return (qb - qw) / 2
-    # elif qb >= (3 - qw) / 2:
-    #     return (qb - qw) / 3
-    # else:
-    #     qb, qw = 1, qw
-    #     return (qb - qw) / 2
     return 1 / (1 + qw / max(1, qb))
 
 

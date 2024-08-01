@@ -1,3 +1,5 @@
+# Adapted from: https://github.com/maitrix-org/llm-reasoners/blob/main/examples/RAP/gsm8k/world_model.py
+
 from typing import NamedTuple, TypedDict
 
 import torch
@@ -39,7 +41,6 @@ class StepLMWorldModel(WorldModel[StepLMState, StepLMAction, LMExample]):
         self.stop_tokens = list(set(
             stop_tokens + [self.base_tokenizer.decode([self.generation_config.eos_token_id])]
         ))
-        # import ipdb; ipdb.set_trace()
     
     def init_state(self) -> list:
         return []

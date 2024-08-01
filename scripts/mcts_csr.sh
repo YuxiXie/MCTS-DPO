@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-#
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 
 if [ -z "${BASH_VERSION}" ]; then
 	echo "Please use bash to run this script." >&2
@@ -31,7 +16,7 @@ export LOGLEVEL="${LOGLEVEL:-WARNING}"
 ACTOR_MODEL_NAME_OR_PATH="upaya07/Arithmo2-Mistral-7B"
 ACTOR_REF_MODEL_NAME_OR_PATH="upaya07/Arithmo2-Mistral-7B"
 
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/sqa/cdpo-4x2"
+OUTPUT_DIR="MCTS-DPO/outputs/checkpoints/sqa/cdpo-4x2"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
@@ -45,6 +30,8 @@ fi
 
 cp -f "$0" "${OUTPUT_DIR}/script.sh"
 
+export WANDB_API_KEY=""
+export WANDB_MODE=online
 if [[ -z "${WANDB_API_KEY}" ]]; then
 	export WANDB_MODE="offline"
 fi
@@ -65,12 +52,6 @@ fi
 DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
-
-export WANDB_API_KEY=""
-export WANDB_MODE=online
-
-export NCCL_DEBUG=INFO
-export NCCL_DEBUG_SUBSYS=INIT,P2P
 
 gpu_vis=$1
 
@@ -112,7 +93,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--clip_range_value 5.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-IPL-SQA-yuxi \
+	--log_project MCTS-IPL-SQA \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \

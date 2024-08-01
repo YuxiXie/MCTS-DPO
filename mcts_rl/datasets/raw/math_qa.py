@@ -1,27 +1,12 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """MATH datasets."""
 
 from __future__ import annotations
 
 import os
-import regex
 from typing import ClassVar
 
 from datasets import load_dataset
-from mcts_rl.utils import random, get_math_data
+from mcts_rl.utils import get_math_data, get_arithmo_data, tqdm
 from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
 
 
@@ -31,9 +16,10 @@ __all__ = [
     'MathQATestDataset',
     'MathQACodeTrainDataset',
     'MathQACodeTestDataset',
+    'MathQASFTTrainDataset',
 ]
 
-DATA_DIR = "/mnt/data/yuxi/math"
+DATA_DIR = "path_to_dataset_folder"
 
 
 class MathQADataset(RawDataset):
@@ -42,6 +28,7 @@ class MathQADataset(RawDataset):
 
     def __init__(self) -> None:
         if self.TYPE == 'pot':
+            ## PoT data
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             raw_arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
             arithmo = []
@@ -51,8 +38,9 @@ class MathQADataset(RawDataset):
                     arithmo.append(dt)
             for i, dt in enumerate(gsm8k):
                 gsm8k[i]['question'] = dt['question'] + ' Write a Python program to solve this.'
-            self.data = gsm8k #+ list(random.sample(arithmo, min(len(gsm8k), len(arithmo))))
+            self.data = gsm8k
         elif self.TYPE == 'all':
+            ## CoT + PoT data
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
             self.data = gsm8k + math
@@ -72,8 +60,23 @@ class MathQADataset(RawDataset):
             try:
                 arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
             except:
-                arithmo = get_math_data(jsonlines_load('/mnt/data/yuxi/math/arithmo/arithmo_train.jsonl'))
-            self.data = gsm8k + math #+ list(random.sample(arithmo, min(len(gsm8k + math), len(arithmo))))
+                arithmo = get_math_data(jsonlines_load(os.path.join(DATA_DIR, 'arithmo/train.jsonl')))
+            if self.TYPE == 'sft':
+                ## use the corresponding training data seen in SFT
+                mathqa = []
+                for dt in tqdm(arithmo, leave=False):
+                    prompt = dt['question'] if 'question' in dt else dt['problem']
+                    if any(prompt.strip().startswith(x['question'].strip()) for x in gsm8k):
+                        mathqa.append(dt)
+                    elif any(prompt.strip().startswith(x['problem'].strip()) for x in math):
+                        mathqa.append(dt)
+                mathqa_dict = {}
+                for dt in mathqa:
+                    if dt['question'] not in mathqa_dict: mathqa_dict[dt['question']] = []
+                    mathqa_dict[dt['question']].append(dt)
+                self.data = get_arithmo_data(mathqa_dict)
+            else:
+                self.data = gsm8k + math
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
@@ -87,6 +90,12 @@ class MathQADataset(RawDataset):
 
     def __len__(self) -> int:
         return len(self.data)
+
+
+class MathQASFTTrainDataset(MathQADataset):
+    NAME: str = 'MathQASFT/train'
+    SPLIT: str = 'train'
+    TYPE: str = 'sft'
 
 
 class MathQATrainDataset(MathQADataset):

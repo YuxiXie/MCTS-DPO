@@ -1,18 +1,3 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""Stanford Alpaca dataset for supervised instruction fine-tuning."""
 
 from __future__ import annotations
 
@@ -33,7 +18,7 @@ __all__ = [
     'ArithmoCodeTrainDataset',
 ]
 
-DATA_DIR = '/home/users/nus/e0672129/scratch/arithmo'
+DATA_DIR = "path_to_dataset_folder"
 
 class ArithmoDataset(RawDataset):
     SPLIT: ClassVar[str]
@@ -44,7 +29,7 @@ class ArithmoDataset(RawDataset):
         try:
             self.data = load_dataset(path or self.PATH, split=self.SPLIT)
         except:
-            self.data = jsonlines_load(os.path.join(DATA_DIR, f'{self.SPLIT}.jsonl'))
+            self.data = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/{self.SPLIT}.jsonl'))
         if self.TYPE == 'math':
             self.data = [dt for dt in self.data if ' answer is' in dt['answer']]
         elif self.TYPE == 'mcq':

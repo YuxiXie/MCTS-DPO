@@ -1,17 +1,5 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
+# Adapted from: https://github.com/PKU-Alignment/safe-rlhf/blob/main/safe_rlhf/configs/constants.py
+
 """Constant variables."""
 
 from __future__ import annotations
@@ -81,9 +69,10 @@ PROMPT_BEGIN: str = 'A chat between a curious user and an assistant. The assista
 # PROMPT_BEGIN: str = "Below is an instruction that describes a task. Write a response that appropriately completes the request."
 
 PROMPT_USER: str = 'QUESTION: {input}\n\n'
-PROMPT_ASSISTANT_MCQ: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
 PROMPT_ASSISTANT: str = 'ANSWER:'
 # PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think step by step.'
+PROMPT_ASSISTANT_MCQ: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
+
 EVAL_PROMPT_USER: str = 'QUESTION:'
 EVAL_PROMPT_ASSISTANT: str = 'ANSWER:'
 # EVAL_PROMPT_ASSISTANT: str = 'ANSWER: Let\'s think about the multi-choice question step by step'
@@ -259,30 +248,30 @@ QA_EVAL_PROMPT = (
 
 
 SQA_EXP = [
-    # {
-    #     'Q': 'Which likely changed the remains of prehistoric living things into natural gas?\nAnswer Choices: (A) air currents (B) fire (C) thunder (D) volcanic reactions',
-    #     'A': 'The transformation of the remains of prehistoric living things into natural gas is influenced by geological processes associated with heat and pressure, conditions often found in volcanic environments.\nAlthough the formation of natural gas primarily occurs in sedimentary basins under specific conditions, volcanic activity can contribute to the necessary heat and pressure.\nThe answer is D',
-    # },
-    # {
-    #     'Q': 'Scientists are discovering ways to make some crops use less water. A person working in which job would most benefit from this research?\nAnswer Choices: (A) a farmer (B) a doctor (C) a waiter (D) a cook',
-    #     'A': 'Farmers are directly involved in the cultivation and production of crops.\nAny advancements in agricultural techniques that improve water efficiency would significantly impact their work, leading to potentially higher yields, reduced water usage, and better sustainability in farming practices.\nThe answer is A',
-    # },
-    # {
-    #     'Q': 'When a car engine is started, gasoline is mixed with air and burned. Heat, sound, and chemical products are released. As the engine operates, which of these remains constant?\nAnswer Choices: (A) the masses of compounds found in the engine (B) the amount of heat in the engine (C) the total mass of gasoline (D) the total amount of energy',
-    #     'A': 'According to the law of conservation of energy, energy cannot be created or destroyed in an isolated system.\nIn a car engine, the chemical energy stored in gasoline is converted into mechanical energy, heat, and sound.\nWhile the forms of energy change, the total amount of energy remains constant.\nThis principle aligns with the concept of energy conservation in physics.\nThe answer is D',
-    # },
-    # {
-    #     'Q': 'Why is it better to wear a white T-shirt than a dark blue T-shirt in the summer?\nAnswer Choices: (A) Light-colored clothes let more air in. (B) Light-colored clothes prevent sweating. (C) Light-colored clothes are not as heavy as dark-colored clothes. (D) Light-colored clothes reflect more sunlight than dark-colored clothes.',
-    #     'A': "White and other light-colored clothing reflect more of the sun's rays, which helps keep the body cooler in hot weather.\nIn contrast, dark colors absorb more sunlight and can increase the feeling of heat.\nThis principle is based on the basic physics of light and heat absorption.\nThe answer is D",
-    # },
-    # {
-    #     'Q': 'Which of the following describes an object that must have a net negative charge?\nAnswer Choices: (A) It contains more molecules than atoms. (B) It contains more electrons than protons. (C) It is carrying an electric current. (D) It is made of metal.',
-    #     'A': 'An object becomes negatively charged when it has an excess of electrons compared to protons, since electrons carry a negative charge and protons carry a positive charge.\nThe imbalance in the number of these subatomic particles leads to a net negative charge.\nThe answer is B',
-    # },
-    # {
-    #     'Q': 'Where do you put your grapes just before checking out?\nAnswer Choices:\n(A) mouth\n(B) fruit market\n(C) super market\n(D) fruit basket\n(E) grocery cart',
-    #     'A': 'The answer should be the place where grocery items are placed before checking out.\nOf the above choices, grocery cart makes the most sense for holding grocery items.\nTherefore, the answer is (E).',
-    # },
+    {
+        'Q': 'Which likely changed the remains of prehistoric living things into natural gas?\nAnswer Choices: (A) air currents (B) fire (C) thunder (D) volcanic reactions',
+        'A': 'The transformation of the remains of prehistoric living things into natural gas is influenced by geological processes associated with heat and pressure, conditions often found in volcanic environments.\nAlthough the formation of natural gas primarily occurs in sedimentary basins under specific conditions, volcanic activity can contribute to the necessary heat and pressure.\nThe answer is D',
+    },
+    {
+        'Q': 'Scientists are discovering ways to make some crops use less water. A person working in which job would most benefit from this research?\nAnswer Choices: (A) a farmer (B) a doctor (C) a waiter (D) a cook',
+        'A': 'Farmers are directly involved in the cultivation and production of crops.\nAny advancements in agricultural techniques that improve water efficiency would significantly impact their work, leading to potentially higher yields, reduced water usage, and better sustainability in farming practices.\nThe answer is A',
+    },
+    {
+        'Q': 'When a car engine is started, gasoline is mixed with air and burned. Heat, sound, and chemical products are released. As the engine operates, which of these remains constant?\nAnswer Choices: (A) the masses of compounds found in the engine (B) the amount of heat in the engine (C) the total mass of gasoline (D) the total amount of energy',
+        'A': 'According to the law of conservation of energy, energy cannot be created or destroyed in an isolated system.\nIn a car engine, the chemical energy stored in gasoline is converted into mechanical energy, heat, and sound.\nWhile the forms of energy change, the total amount of energy remains constant.\nThis principle aligns with the concept of energy conservation in physics.\nThe answer is D',
+    },
+    {
+        'Q': 'Why is it better to wear a white T-shirt than a dark blue T-shirt in the summer?\nAnswer Choices: (A) Light-colored clothes let more air in. (B) Light-colored clothes prevent sweating. (C) Light-colored clothes are not as heavy as dark-colored clothes. (D) Light-colored clothes reflect more sunlight than dark-colored clothes.',
+        'A': "White and other light-colored clothing reflect more of the sun's rays, which helps keep the body cooler in hot weather.\nIn contrast, dark colors absorb more sunlight and can increase the feeling of heat.\nThis principle is based on the basic physics of light and heat absorption.\nThe answer is D",
+    },
+    {
+        'Q': 'Which of the following describes an object that must have a net negative charge?\nAnswer Choices: (A) It contains more molecules than atoms. (B) It contains more electrons than protons. (C) It is carrying an electric current. (D) It is made of metal.',
+        'A': 'An object becomes negatively charged when it has an excess of electrons compared to protons, since electrons carry a negative charge and protons carry a positive charge.\nThe imbalance in the number of these subatomic particles leads to a net negative charge.\nThe answer is B',
+    },
+    {
+        'Q': 'Where do you put your grapes just before checking out?\nAnswer Choices:\n(A) mouth\n(B) fruit market\n(C) super market\n(D) fruit basket\n(E) grocery cart',
+        'A': 'The answer should be the place where grocery items are placed before checking out.\nOf the above choices, grocery cart makes the most sense for holding grocery items.\nTherefore, the answer is (E).',
+    },
     {
         'Q': 'What do people use to absorb extra ink from a fountain pen?\nAnswer Choices:\n(A) shirt pocket\n(B) calligrapher\'s hand\n(C) inkwell\n(D) desk drawer\n(E) blotter',
         'A': 'The answer must be used to absorb extra ink.\nBlotters are designed to absorb liquids.\nTherefore, the answer is (E) blotter.',
@@ -370,7 +359,7 @@ GSM8K_EXP = [
 
 GSM8K_PROMPT = '\n\n'.join([
     PROMPT_USER.format(input=exp['Q']) + PROMPT_ASSISTANT + ' ' + exp['A'] + DEFAULT_EOS_TOKEN
-    for exp in GSM8K_EXPX # GSM8K_EXP[:2]
+    for exp in GSM8K_EXPX
 ]) + '\n\n'
 
 MATH_EXP = [

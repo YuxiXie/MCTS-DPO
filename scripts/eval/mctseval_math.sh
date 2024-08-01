@@ -1,20 +1,3 @@
-#!/usr/bin/env bash
-#
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 if [ -z "${BASH_VERSION}" ]; then
 	echo "Please use bash to run this script." >&2
 	exit 1
@@ -27,15 +10,11 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-# ACTOR_MODEL_NAME_OR_PATH="meta-math/MetaMath-Mistral-7B"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps8403"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/E3-2x2-gt-qa-d3/steps2176"
-# ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/experiments/airthmetic/metamath-5x3/steps768"
-# ACTOR_MODEL_NAME_OR_PATH="meta-llama/Meta-Llama-3-8B-Instruct"
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/cdpo-fullsft-it16/steps4992"
-REWARD_MODEL_NAME_OR_PATH=$ACTOR_MODEL_NAME_OR_PATH
-unset REWARD_CRITIC_MODEL_NAME_OR_PATH
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/mcts-rl/debug/eval"
+MODEL_NAME=""
+STEP_NUM=
+ACTOR_MODEL_NAME_OR_PATH=MCTS-DPO/outputs/checkpoints/arithmetic/${MODEL_NAME}/steps${STEP_NUM}
+
+OUTPUT_DIR="MCTS-DPO/outputs/eval"
 unset HOSTFILE
 ZERO_STAGE=2
 OFFLOAD="all"
@@ -79,7 +58,7 @@ export WANDB_MODE=dryrun
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=INIT,P2P
 
-gpu_vis=0
+gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--module mcts_rl.algorithms.mcts \
@@ -110,7 +89,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--clip_range_value 5.0 \
 	--output_dir "${OUTPUT_DIR}" \
 	--log_type wandb \
-	--log_project MCTS-DPO-CSR \
+	--log_project MCTS-DPO-EVAL \
 	--zero_stage "${ZERO_STAGE}" \
 	--offload "${OFFLOAD}" \
 	--bf16 True \
@@ -125,6 +104,4 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--num_return_sequences 1 \
 	--temperature 1.0 \
 	--model_type mistral \
-	--prediction_file_path /home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/predictions/mistral_cdpo-fullsft-it16_math4992.jsonl
-
-bash scripts/examples/eval/mctseval_math.sh
+	--prediction_file_path MCTS-DPO/outputs/checkpoints/arithmetic/predictions/mistral_${modelname}_math${stp}.jsonl

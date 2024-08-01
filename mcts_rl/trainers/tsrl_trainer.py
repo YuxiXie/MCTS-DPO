@@ -1,17 +1,3 @@
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
 """Trainer base class for RL training."""
 
 from __future__ import annotations
@@ -39,7 +25,6 @@ from transformers import (
     AutoModelForCausalLM,
     GenerationConfig,
     PreTrainedModel,
-    PreTrainedTokenizerBase,
     get_scheduler,
 )
 from transformers.deepspeed import HfDeepSpeedConfig, deepspeed_load_checkpoint
@@ -57,7 +42,6 @@ from mcts_rl.utils import (
     get_all_reduce_mean,
     get_optimizer_grouped_parameters,
     is_main_process,
-    is_same_tokenizer,
     to_device,
     check_available,
 )
@@ -480,7 +464,8 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                     continue
                 
                 # generate batches
-                self.set_eval()
+                if not self.args.offline:
+                    self.set_eval()
                 prompt_only_batch = to_device(prompt_only_batch, self.args.device)
                 rl_batches = self.split_tsrl_micro_batches(prompt_only_batch)
                 if self.use_ptx:
@@ -615,6 +600,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                         return_dict_in_generate=True,
                     )
                     seq, scores = sequences.sequences, sequences.scores
+                    print(self.tokenizer.decode(seq[0]))
                     conf = 0.0
                     for idx, _id in enumerate(seq[0]):
                         if idx < batch['input_ids'].size(-1): continue
@@ -629,6 +615,7 @@ class TSRLTrainer(TrainerBase):  # pylint: disable=too-many-instance-attributes
                                 logprobs = F.log_softmax(scores[idx - batch['input_ids'].size(-1)][0], dim=-1)
                                 conf = sum(torch.exp(logprobs[tok_id]).detach().item() for tok_id in correct_token_ids)
                                 break
+                    print(conf)
             else:
                 terminators = [self.tokenizer.eos_token_id]
                 terminators += [self.tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.args.model_type == 'llama3' else []

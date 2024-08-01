@@ -1,20 +1,3 @@
-#!/usr/bin/env bash
-#
-# Copyright 2023 PKU-Alignment Team. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 if [ -z "${BASH_VERSION}" ]; then
 	echo "Please use bash to run this script." >&2
 	exit 1
@@ -27,14 +10,13 @@ ROOT_DIR="$(dirname "${SCRIPT_DIR}")"
 export PYTHONPATH="${ROOT_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 export LOGLEVEL="${LOGLEVEL:-WARNING}"
 
-ACTOR_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
-ACTOR_REF_MODEL_NAME_OR_PATH="/home/users/nus/e0672129/scratch/MCTS-DPO/sft/diymistral-arithmo-lowerlr/steps25209"
+ACTOR_MODEL_NAME_OR_PATH="SFT-Arithmo"
+ACTOR_REF_MODEL_NAME_OR_PATH="SFT-Arithmo"
 
-OUTPUT_DIR="/home/users/nus/e0672129/scratch/MCTS-DPO/outputs/checkpoints/arithmetic/cdpo-fullsft-nogt"
+OUTPUT_DIR="MCTS-DPO/outputs/checkpoints/arithmetic/cdpo-2x2-nogt"
 unset HOSTFILE
 ZERO_STAGE=3
 OFFLOAD="optimizer"
-
 
 mkdir -p "${OUTPUT_DIR}"
 OUTPUT_DIR="$(cd "${OUTPUT_DIR}" &>/dev/null && pwd)"
@@ -44,6 +26,8 @@ fi
 
 cp -f "$0" "${OUTPUT_DIR}/script.sh"
 
+export WANDB_API_KEY=""
+export WANDB_MODE=online
 if [[ -z "${WANDB_API_KEY}" ]]; then
 	export WANDB_MODE="offline"
 fi
@@ -65,12 +49,6 @@ DEEPSPEED_ARGS+=("--master_port" "${MASTER_PORT}")
 
 exec 1> >(tee "${OUTPUT_DIR}/stdout.log" >&1) 2> >(tee "${OUTPUT_DIR}/stderr.log" >&2)
 
-export WANDB_API_KEY=""
-export WANDB_MODE=online
-
-export NCCL_DEBUG=INFO
-export NCCL_DEBUG_SUBSYS=INIT,P2P
-
 gpu_vis=$1
 
 deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
@@ -80,8 +58,8 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--choose_worst \
 	--save_mcts_data \
 	--filter \
-	--iteration_interval 32 \
 	--not_include_gt \
+	--iteration_interval 64 \
 	--actor_model_name_or_path "${ACTOR_MODEL_NAME_OR_PATH}" \
 	--actor_ref_model_name_or_path "${ACTOR_REF_MODEL_NAME_OR_PATH}" \
 	--scale_coeff 0.1 \
@@ -121,8 +99,7 @@ deepspeed --include localhost:$gpu_vis --master_port $MASTER_PORT \
 	--max_new_tokens 128 \
 	--n_iters 64 \
 	--depth_limit 3 \
-	--n_init_actions 3 \
+	--n_init_actions 2 \
 	--n_actions 2 \
 	--force_terminating_on_depth_limit \
 	--mcts_temperature 0.0
-

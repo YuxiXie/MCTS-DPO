@@ -1,4 +1,5 @@
-from time import time
+# Adapted from: https://github.com/maitrix-org/llm-reasoners/blob/main/reasoners/algorithm/mcts.py
+
 import itertools
 from tqdm import trange
 from copy import deepcopy
@@ -6,13 +7,13 @@ from typing import Generic, Optional, NamedTuple, Callable, Union
 
 import math
 import torch
-import transformers
-import func_timeout
 import numpy as np
 from copy import deepcopy
 
-from mcts_rl.algorithms.mcts.mcts.base import State, Action, Example, Args, SearchAlgorithm, WorldModel, SearchConfig
-from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks
+from mcts_rl.algorithms.mcts.mcts.base import (
+    State, Action, Example, 
+    SearchAlgorithm, WorldModel, SearchConfig,
+)
 
 from mcts_rl.utils import calculate_diversity_score
 
@@ -59,16 +60,18 @@ class MCTSNode(Generic[State, Action]):
         :param state: the current state
         :param action: the action of the last step, i.e., the action from parent node to current node
         :param parent: the parent node, None if root of the tree
-        TODO (base_reward; init_V; init_N)
-        :param embeddings: the embeddings of the current state
+        :param embeddings: the embeddings of the current state (BERTScore calculation for similar generations filtering)
         :param is_terminal: whether the current state is a terminal state
+        
+        :param rewards: base rewards
+        :param value: advantage of taking the action
         """
         self.id = next(MCTSNode.id_iter)
         self.is_terminal = is_terminal
-        self.action = action
-        self.embeddings = embeddings
         self.state = state
+        self.action = action
         self.parent = parent
+        self.embeddings = embeddings
         self.children: 'Optional[list[MCTSNode]]' = None
         self.depth = 0 if parent is None else parent.depth + 1
         self.length_penalty = length_penalty
@@ -86,13 +89,13 @@ class MCTSNode(Generic[State, Action]):
     def r(self) -> float:
         if self.rewards is None:
             return self.value if self.parent is None else (self.value - self.parent.value)
+        # TODO: consider KL divergence in MCTS
         # return self.rewards.mean().detach().item() + (self.value if self.parent is None else (self.value - self.parent.value))
         raise ValueError('Should not consider kl divergence here!')
     
     @property
     def p(self) -> float:
-        # return self.log_probs.mean().exp().detach().item()  # PS: length_penalty = 1.0
-        return (self.log_probs.sum() / self.log_probs.size(-1) ** self.length_penalty).exp().detach().item()  # PS: length_penalty = 1.25
+        return (self.log_probs.sum() / self.log_probs.size(-1) ** self.length_penalty).exp().detach().item()
 
 
 class MCTSResult(NamedTuple):
@@ -154,18 +157,17 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         def _cal_probs(temp):
             if temp > 0:
                 try:
+                    ## choice 1: to sample based on visit counts
                     # counts = [(x * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
                     #     for x, nc in zip(visit_counts, next_action_n_children)]
+                    ## choice 2: to sample based on Q values
                     counts = [(math.exp(x) * (nc + 1 if self.consider_diversity else 1)) ** (1. / temp) if x else x \
                         for x, nc in zip(next_action_Q, next_action_n_children)]
                     total_count = float(sum(counts))
                     probs = [x / total_count for x in counts]
                     return probs
                 except OverflowError as e:
-                    print((
-                        'Run into {} -- '
-                        'Temperature too small ... Set to zero ...'
-                    ).format(str(e)))
+                    print(('Run into {} -- Temperature too small ... Set to zero ...').format(str(e)))
             best_actions = np.array(np.argwhere(visit_counts == np.max(visit_counts))).flatten()
             probs = [0] * len(visit_counts)
             for best_action in best_actions:
@@ -177,14 +179,12 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         
         if return_selection:
             if temperature == 0:
-                # selected_idx = max(range(len(visit_counts)), key=lambda x: (
-                #     visit_counts[x] * (next_action_n_children[x] + 1 if self.consider_diversity else 1), 
-                #     next_action_Q[x], next_action_V[x]
-                # ))
+                ## choice 1: to sample based on visit counts
                 # selected_idx = max(range(len(visit_counts)), key=lambda x: (
                 #     (next_action_Q[x] + 2) * (next_action_variance[x] + 1 if self.consider_diversity else 1), 
                 #     visit_counts[x], next_action_V[x]
                 # ))
+                ## choice 2: to sample based on Q values
                 selected_idx = max(range(len(visit_counts)), key=lambda x: (
                     visit_counts[x] * (next_action_variance[x] + 1 if self.consider_diversity else 1), 
                     next_action_Q[x], next_action_V[x]

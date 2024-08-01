@@ -1,8 +1,5 @@
-from typing import Generic, TypeVar, Union, NamedTuple, Protocol, Optional
+from typing import Generic, TypeVar, Protocol
 from abc import ABC, abstractmethod
-
-import numpy as np
-from transformers import StoppingCriteriaList
 
 State = TypeVar("State")
 Action = TypeVar("Action")
@@ -34,10 +31,6 @@ class SearchConfig(ABC, Generic[State, Action, Example]):
 
     @abstractmethod
     def get_actions(self, state: State) -> list[Action]: ...
-
-    # @abstractmethod
-    # def fast_reward(self, state: State, action: Action) -> tuple[float, dict]:
-    #     return 0, {}
 
     @abstractmethod
     def reward(self, state, action, **kwargs) -> tuple[float, dict]: ...

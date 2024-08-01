@@ -1,4 +1,6 @@
-from typing import Optional, NamedTuple
+# Adapted from: https://github.com/maitrix-org/llm-reasoners/blob/main/examples/RAP/gsm8k/search_config.py
+
+from typing import NamedTuple
 
 import regex
 import random
@@ -13,7 +15,6 @@ from nltk.tokenize import sent_tokenize
 import deepspeed
 import torch
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pad_sequence
 import torch.distributed as dist
 from transformers import GenerationConfig, PreTrainedTokenizerBase, AutoModelForCausalLM
 from transformers.tokenization_utils import TruncationStrategy
@@ -24,13 +25,10 @@ from mcts_rl.algorithms.mcts.mcts.embedding_retrieve import get_embs_masks, chec
 from mcts_rl.utils import extract_answer, math_equal, csr_equal
 from mcts_rl.configs import (
     PROMPT_BEGIN, PROMPT_ASSISTANT, PROMPT_ASSISTANT_MCQ,
-    HH_EVAL_PROMPT,
     EVAL_PROMPT_USER, EVAL_PROMPT_ASSISTANT,
-    ANSWER_HINT, HINTED_EVAL_PROMPT, REWARD_EVAL_PROMPT,
-    LLAMA3_HINTED_EVAL_PROMPT,
-    LLAMA3_PROMPT_ASSISTANT, 
-    LLAMA3_EVAL_PROMPT_USER, LLAMA3_EVAL_PROMPT_ASSISTANT, 
-    LLAMA3_PROMPT_ASSISTANT_MCQ,
+    ANSWER_HINT, HINTED_EVAL_PROMPT, REWARD_EVAL_PROMPT, HH_EVAL_PROMPT,
+    LLAMA3_PROMPT_ASSISTANT, LLAMA3_PROMPT_ASSISTANT_MCQ,
+    LLAMA3_HINTED_EVAL_PROMPT, LLAMA3_EVAL_PROMPT_ASSISTANT,
 )
 
 
@@ -63,8 +61,7 @@ class SearchArgs(NamedTuple):
 
 
 class StepLMConfig(SearchConfig):
-    def __init__(self,
-                 args: SearchArgs) -> None:
+    def __init__(self, args: SearchArgs) -> None:
         super().__init__()
         self.example = None
         self.double_actions = False
@@ -154,23 +151,23 @@ class StepLMConfig(SearchConfig):
         at_depth_limit = self.force_terminating_on_depth_limit and len(state) + 1 > self.depth_limit
         n_actions = self.n_init_actions if not len(state) else self.n_actions
         if self.use_mcq:
-            n_actions = 2 if at_depth_limit and self.n_actions > 1 else n_actions  # TODO: magic number
+            n_actions = 2 if at_depth_limit and self.n_actions > 1 else n_actions  # set a larger basic action space for MCQ
         else:
-            n_actions = 1 if at_depth_limit else n_actions  # TODO: magic number
+            n_actions = 1 if at_depth_limit else n_actions
         
         assert self.example['input_ids'].dim() == 1, "Input IDs should be a 1-dim sequence for a single example"
         assert self.generation_config.num_return_sequences == 1, "Otherwise will get stuck"
         
         input_ids, attention_mask = self._get_sequence_ids_in_path(state)
-        unique_text_list, sequences_list = [], []
         prompt = self.base_tokenizer.decode(input_ids, 
                                             skip_special_tokens=self.model_type != 'llama3', 
                                             clean_up_tokenization_spaces=False)
-        
         terminators = [self.base_tokenizer.eos_token_id]
-        terminators += [self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.model_type == 'llama3' else []        
+        terminators += [self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")] if self.model_type == 'llama3' else []
+        unique_text_list, sequences_list = [], []
         for _ in trange(n_actions, disable=self.disable_tqdm, desc='Expand: action generation', leave=False):
             cur_max_new_tokens = self.generation_config.max_new_tokens + (0 if self.use_mcq else 16)
+            ## sample candidate steps to construct action space from LLMs with some randomness (temperature >= 0)
             if (not self.get_tp_zero) or unique_text_list or prompt.startswith(PROMPT_BEGIN):
                 cur_max_new_tokens = (self.generation_config.max_length - input_ids.size(-1)) if n_actions == 1 else cur_max_new_tokens
                 cur_max_new_tokens = max(1, min(cur_max_new_tokens, self.generation_config.max_length - input_ids.size(-1)))
@@ -202,6 +199,7 @@ class StepLMConfig(SearchConfig):
                 )
             
             for seq in sequences:
+                ## get full generated text for current step
                 full_generated = self.base_tokenizer.decode(seq, 
                                                             skip_special_tokens=self.model_type != 'llama3', 
                                                             clean_up_tokenization_spaces=False)
@@ -214,7 +212,7 @@ class StepLMConfig(SearchConfig):
                     full_generated = full_generated.split(EVAL_PROMPT_USER.split(':')[0])[0]
                     if raw_full_generated != full_generated:
                         full_generated = full_generated.rstrip() + self.base_tokenizer.eos_token
-                
+                ## split text sequence into granular steps
                 newline_flag = True
                 raw_sentences = regex.split(r'[\n]+', full_generated)
                 if len(raw_sentences) <= 1 and not self.use_code:
@@ -233,6 +231,7 @@ class StepLMConfig(SearchConfig):
                             sentences.append(sent)
                             sent, subcnt = '', 0
                 for i, raw_sent in enumerate(sentences):
+                    ## identify end of sentence
                     if ' answer is' in raw_sent and not raw_sent.endswith(' answer is'):
                         if self.model_type == 'llama3':
                             if "<|eot_id|>" not in raw_sent:
@@ -242,6 +241,7 @@ class StepLMConfig(SearchConfig):
                         sentences = sentences[:i + 1]
                         break
                 
+                ## collect generation as steps
                 sents = []
                 if not len(sentences): continue
                 if self.n_actions > 1 and not len(state) and len(sentences) > 1 and \
@@ -282,6 +282,7 @@ class StepLMConfig(SearchConfig):
                 sequences_list.append(gen_ids)
                 unique_text_list.append(text)
         
+        ## integrate G.T. guidance (ground-truth solutions used in SFT tuning)
         if self.include_gt and not self.use_mcq and self.example.get('reasoning', ''):
             pre_gen = prompt.split(LLAMA3_EVAL_PROMPT_ASSISTANT)[-1] if self.model_type == 'llama3' else prompt.split(EVAL_PROMPT_ASSISTANT)[-1]
             newline_flag = True
@@ -322,6 +323,7 @@ class StepLMConfig(SearchConfig):
                     break
                 cur_step += step
         
+        ## add eos token
         if not len(sequences_list):
             if self.model_type == 'llama3':
                 sequences_list.append(torch.tensor([self.base_tokenizer.convert_tokens_to_ids("<|eot_id|>")]).to(input_ids.device))
@@ -330,6 +332,7 @@ class StepLMConfig(SearchConfig):
                 sequences_list.append(torch.tensor([self.base_tokenizer.eos_token_id]).to(input_ids.device))
                 unique_text_list.append(self.base_tokenizer.eos_token)
         
+        ## gather result candidate steps (text, embeddings, logits, logprobs)
         results = []
         for gen_ids in sequences_list:
             seq_input_ids = torch.cat((input_ids, gen_ids.to(input_ids.device)), dim=-1).unsqueeze(0)
@@ -411,6 +414,7 @@ class StepLMConfig(SearchConfig):
             
             if self_eval:
                 if self.reward_model is not None:
+                    ## if there is external reward model available for evaluation
                     response = ''
                     eval_inputs = self.reward_tokenizer(
                         eval_prompt,
@@ -423,6 +427,7 @@ class StepLMConfig(SearchConfig):
                         attention_mask=eval_inputs['attention_mask'].to(device)
                     ).end_scores.squeeze(dim=-1)[0]).detach().item()
                 else:
+                    ## self-evaluation
                     eval_inputs = self.base_tokenizer(
                         eval_prompt,
                         add_special_tokens=True,
@@ -450,6 +455,8 @@ class StepLMConfig(SearchConfig):
                         response = self.base_tokenizer.decode(seq, skip_special_tokens=True)
             else:
                 response = ''
+            
+            ## calculate confidence scores
             
             if gt_ans is None:
                 if self_eval:
@@ -503,11 +510,13 @@ class StepLMConfig(SearchConfig):
             init_answer = texts[-1] if len(texts) > 1 else ''
             
             if input_txt.startswith(PROMPT_BEGIN):
+                ## for HH-RLHF
                 eval_prompt = HH_EVAL_PROMPT.format(input=input_txt, prompt=self.prompt_assistant + texts[-1] + step)
                 # eval_prompt = QA_EVAL_PROMPT.format(input=input_txt, prompt=self.prompt_assistant + texts[-1] + step)
                 eval_result, eval_conf, eval_correct_score = _eval(eval_prompt, prompt.split(self.prompt_assistant)[-1] + ' ' + step, None, action.device)
             else:
                 if self.example['reasoning'] and self.example['reasoning'] != self.example['answer_content']:
+                    ## for cases where the intermediate steps are available in G.T. solutions
                     newline_flag = True
                     _solution_steps = regex.split(r'[\n]+', self.example['reasoning'].strip())
                     if len(_solution_steps) < 2 and not self.use_code:
@@ -524,16 +533,13 @@ class StepLMConfig(SearchConfig):
                         else:
                             solution_steps.append(x)
                     solution = ''.join(solution_steps)
-                    # if self.use_code:
-                    #     solution = self.example["reasoning"]
-                    # else:
-                    #     solution = self.example["reasoning"] if ' answer is' in self.example["reasoning"] \
-                    #         else f'{self.example["reasoning"]}\nThe answer is {self.example["answer"]}'
                     gt_ans = self.example["answer"]
                 else:
+                    ## for cases (MCQ) where only final answers are available
                     gt_ans = [f"({self.example['answer']})", self.example['answer_content']] \
                         if self.example['answer'] != self.example['answer_content'] else [f"({self.example['answer']})"]
                     solution = f'The answer is {gt_ans[0]} {gt_ans[1]}'
+                
                 if self.reward_model is not None:
                     eval_prompt = REWARD_EVAL_PROMPT.format(input=input_txt, prompt=init_answer + step, 
                                                             eos_token=self.reward_tokenizer.eos_token)
