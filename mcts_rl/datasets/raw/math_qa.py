@@ -67,7 +67,8 @@ class MathQADataset(RawDataset):
                 arithmo, gsm8k, math = list_to_dict(arithmo), list_to_dict(gsm8k), list_to_dict(math)
                 ## use the corresponding training data seen in SFT
                 mathqa_dict = {k:v for k,v in arithmo.items() if k in math or k in gsm8k}
-                self.data = get_arithmo_data(mathqa_dict)
+                self.data = [vv for v in mathqa_dict.values() for vv in v]
+                # self.data = get_arithmo_data(mathqa_dict)
             else:
                 self.data = gsm8k + math
 

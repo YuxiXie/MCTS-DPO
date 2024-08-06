@@ -43,6 +43,8 @@ from mcts_rl.datasets.raw.gsm8k import (
     GSM8KTrainDataset,
     GSM8KPoTTestDataset,
     GSM8KPoTTrainDataset,
+    GSM8KSFTTrainDataset,
+    GSM8KSFTTestDataset,
 )
 from mcts_rl.datasets.raw.arithmo import (
     ArithmoDataset,
@@ -166,4 +168,6 @@ __all__ = [
     'MathQASFTTrainDataset',
     'MATHSFTTrainDataset',
     'MATHSFTTestDataset',
+    'GSM8KSFTTrainDataset',
+    'GSM8KSFTTestDataset',
 ]
