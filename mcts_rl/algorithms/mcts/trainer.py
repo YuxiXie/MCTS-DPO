@@ -195,15 +195,16 @@ class MCTSTrainer(TSRLTrainer):
         mini_batches = {k:[] for k in ['prompts_list', 'input_ids_list', 'attention_mask_list', 'init_value_list']}
         for prompt, next_completions, init_values in zip(prompts, candidates, init_value_list):
             prompt = torch.stack([prompt for _ in next_completions], dim=0)
+            attention_mask = pad_sequence([
+                torch.ones((prompt.size(-1) + x.size(-1),), dtype=torch.bool, device=prompt.device)
+                for x in next_completions
+            ], batch_first=True, padding_value=False)
             next_completions = pad_sequence(next_completions, batch_first=True, padding_value=self.tokenizer.pad_token_id)
             input_ids = torch.cat((prompt, next_completions), dim=-1)
             if input_ids.size(-1) > self.generation_config.max_length: continue
             mini_batches['prompts_list'].append(prompt)
             mini_batches['input_ids_list'].append(input_ids)
-            mini_batches['attention_mask_list'].append(torch.logical_and(
-                input_ids.not_equal(self.tokenizer.pad_token_id),
-                input_ids.not_equal(self.tokenizer.unk_token_id),
-            ))
+            mini_batches['attention_mask_list'].append(attention_mask)
             mini_batches['init_value_list'].append(init_values)
         
         if self.args.few_shot and self.args.model_type == 'gpt-j':
@@ -339,7 +340,7 @@ class MCTSTrainer(TSRLTrainer):
             if self.args.ipo:
                 losses.append((logits - 1 / (2 * self.scale_coeff)) ** 2)
             elif self.args.conservative:
-                qb, qw = init_values[better_idx], init_values[worse_idx]
+                qb, qw = init_values
                 confidence = calculate_preference_confidence(qb, qw)
                 label_smoothing = min(1 - confidence, 0.5)
                 losses.append(

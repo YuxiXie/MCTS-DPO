@@ -773,6 +773,9 @@ def list_to_dict(data):
     _dict = {}
     for dt in data:
         prompt = dt['question'] if 'question' in dt else dt['problem']
+        if not prompt.strip(): continue
+        answer = dt['solution'] if 'solution' in dt else dt['answer']
+        if not answer.strip(): continue
         if prompt not in _dict:
             _dict[prompt] = []
         _dict[prompt].append(dt)
