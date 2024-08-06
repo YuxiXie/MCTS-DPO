@@ -32,7 +32,7 @@ from transformers import PreTrainedTokenizerBase
 from transformers.modeling_outputs import ModelOutput
 from transformers.tokenization_utils import BatchEncoding, PaddingStrategy, TruncationStrategy
 
-from mcts_rl.configs.constants import PROMPT_ASSISTANT
+from mcts_rl.configs.constants import PROMPT_ASSISTANT, IGNORE_INDEX
 
 
 __all__ = [
@@ -777,3 +777,14 @@ def list_to_dict(data):
             _dict[prompt] = []
         _dict[prompt].append(dt)
     return _dict
+
+
+def pad_tensors(tensors, max_len=-1, pad_value=IGNORE_INDEX):
+    tensors = [x for x in tensors]
+    if max_len <= 0:
+        max_len = max([len(x) for x in tensors])
+    for i in range(len(tensors)):
+        pad_len = max_len - len(tensors[i])
+        tmp = torch.ones((pad_len,), dtype=torch.long, device=tensors[i].device)
+        tensors[i] = torch.cat((tensors[i], tmp * pad_value), dim=-1).long()
+    return torch.stack(tensors, dim=0)

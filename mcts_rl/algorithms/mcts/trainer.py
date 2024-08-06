@@ -22,6 +22,7 @@ from mcts_rl.utils import (
     csr_equal,
     calculate_preference_confidence,
     get_final_qa_index,
+    pad_tensors,
 )
 from mcts_rl.configs.constants import PROMPT_ASSISTANT, PROMPT_BEGIN
 from mcts_rl.algorithms.mcts.mcts import (
@@ -66,6 +67,7 @@ class MCTSTrainer(TSRLTrainer):
             get_tp_zero=self.args.get_tp_zero,
             model_type=self.args.model_type,
             include_gt=(not self.args.not_include_gt),
+            verbose=self.args.verbose,
         ))
         mcts_algo = MCTS(MCTSConfig(
             w_exp=self.args.w_exp,
@@ -253,32 +255,49 @@ class MCTSTrainer(TSRLTrainer):
         better_idx = -1
         worse_idx = 0 if self.args.choose_worst else -2
         
-        label_smoothing_values = []
-        
+        all_better_input_ids, all_worse_input_ids = [], []
+        all_better_attention_mask, all_worse_attention_mask = [], []
+        all_init_value_list = []
         for sample_id in range(n_sample):
-            if len(losses) >= max_n_sample: break
+            if len(all_better_input_ids) >= max_n_sample: break
             
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
-            init_values = init_value_list[sample_id]
             
             n_output = input_ids.size(0)
             if n_output < 2: continue
             
             if self.args.choose_random:
                 worse_idx = random.choice(range(n_output - 1))
-            better_input_ids, worse_input_ids = input_ids[better_idx], input_ids[worse_idx]
-            better_attention_mask, worse_attention_mask = attention_mask[better_idx], attention_mask[worse_idx]
-            input_ids = torch.stack([better_input_ids, worse_input_ids], dim=0)
-            attention_mask = torch.stack([better_attention_mask, worse_attention_mask], dim=0)
+                
+            all_better_input_ids.append(input_ids[better_idx])
+            all_worse_input_ids.append(input_ids[worse_idx])
+            all_better_attention_mask.append(attention_mask[better_idx])
+            all_worse_attention_mask.append(attention_mask[worse_idx])
+            all_init_value_list.extend([init_value_list[sample_id][better_idx], init_value_list[sample_id][worse_idx]])
+        all_input_ids = pad_tensors(all_better_input_ids + all_worse_input_ids, pad_value=self.tokenizer.pad_token_id)
+        all_attention_mask = pad_tensors(all_better_attention_mask + all_worse_attention_mask, pad_value=False)
+        
+        torch.cuda.empty_cache()
+        all_sequence_log_probs = self.compute_log_probs(
+            self.actor_model.module,
+            input_ids=all_input_ids,
+            attention_mask=all_attention_mask,
+        )
+        all_better_input_ids, all_worse_input_ids = all_input_ids.chunk(chunks=2, dim=0)
+        all_better_attention_mask, all_worse_attention_mask = all_attention_mask.chunk(chunks=2, dim=0)
+        all_better_sequence_log_probs, all_worse_sequence_log_probs = all_sequence_log_probs.chunk(chunks=2, dim=0)
+        
+        label_smoothing_values = []
+        for sample_id in range(len(all_better_input_ids)):
+            better_input_ids = all_better_input_ids[sample_id]
+            better_attention_mask = all_better_attention_mask[sample_id]
             
-            torch.cuda.empty_cache()
-            sequence_log_probs = self.compute_log_probs(
-                self.actor_model.module,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-            )
-            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
+            worse_input_ids = all_worse_input_ids[sample_id]
+            worse_attention_mask = all_worse_attention_mask[sample_id]
+            
+            init_values = [all_init_value_list[sample_id * 2], all_init_value_list[sample_id * 2 + 1]]
+            better_sequence_log_probs, worse_sequence_log_probs = all_better_sequence_log_probs[sample_id], all_worse_sequence_log_probs[sample_id]
             
             with torch.no_grad():
                 torch.cuda.empty_cache()

@@ -199,8 +199,9 @@ class MCTS(SearchAlgorithm, Generic[State, Action]):
         path = self._select(node)
         while not self._is_terminal_with_depth_limit(path[-1]):
             self._expand_and_evaluate(path[-1])
-            if path[-1].parent is not None:
-                self._back_propagate(path)
+            # ### debug mode
+            # if path[-1].parent is not None:
+            #     self._back_propagate(path)
             if self._is_terminal_with_depth_limit(path[-1]) or len(path[-1].children) == 0:
                 break
             node = self._puct_select(path[-1])

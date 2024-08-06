@@ -58,6 +58,7 @@ class SearchArgs(NamedTuple):
     get_tp_zero: bool = False
     model_type: str = 'mistral'
     include_gt: bool = True
+    verbose: bool = False
 
 
 class StepLMConfig(SearchConfig):
@@ -101,6 +102,7 @@ class StepLMConfig(SearchConfig):
             self.prompt_assistant = LLAMA3_PROMPT_ASSISTANT_MCQ if self.use_mcq else LLAMA3_PROMPT_ASSISTANT
             
         self.include_gt = args.include_gt
+        self.verbose = args.verbose
 
     def _gather_log_probabilities(self, logits: torch.Tensor, labels: torch.LongTensor) -> torch.Tensor:
         """Gather log probabilities of the given labels from the logits."""
@@ -561,10 +563,12 @@ class StepLMConfig(SearchConfig):
                     if not solution.strip().startswith((init_answer + step).strip()):
                         eval_correct_score *= 5/4
             
-            print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
+            if self.verbose:
+                print(f'\n======\n{eval_prompt} {eval_result} ({eval_conf})')
             if self.use_code and is_terminal:
                 pred = extract_answer(prompt.split(self.prompt_assistant)[-1] + step, use_code=self.use_code)
-                print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
+                if self.verbose:
+                    print('\nPredicted answer is: {} | Ground-truth is: {}'.format(pred, gt_ans))
             score = eval_conf / max(parent_depth - 3, 1)    # Penalize generations that are too long
             if score == 0: score = parent_value
             if is_terminal and not input_txt.startswith(PROMPT_BEGIN) and not self.eval_mode:
