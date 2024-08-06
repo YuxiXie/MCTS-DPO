@@ -261,7 +261,6 @@ class MCTSTrainer(TSRLTrainer):
             input_ids = input_ids_list[sample_id]
             attention_mask = attention_mask_list[sample_id]
             init_values = init_value_list[sample_id]
-            # if init_values[-1] <= 0 or init_values[0] >= 1: continue
             
             n_output = input_ids.size(0)
             if n_output < 2: continue
@@ -273,34 +272,14 @@ class MCTSTrainer(TSRLTrainer):
             input_ids = torch.stack([better_input_ids, worse_input_ids], dim=0)
             attention_mask = torch.stack([better_attention_mask, worse_attention_mask], dim=0)
             
-            # torch.cuda.empty_cache()
-            # sequence_log_probs = self.compute_log_probs(
-            #     self.actor_model.module,
-            #     input_ids=input_ids,
-            #     attention_mask=attention_mask,
-            # )
-            # better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
             torch.cuda.empty_cache()
-            better_sequence_log_probs = self.compute_log_probs(
+            sequence_log_probs = self.compute_log_probs(
                 self.actor_model.module,
-                input_ids=better_input_ids.unsqueeze(0),
-                attention_mask=better_attention_mask.unsqueeze(0),
-            )[0]
-            torch.cuda.empty_cache()
-            worse_sequence_log_probs = self.compute_log_probs(
-                self.actor_model.module,
-                input_ids=worse_input_ids.unsqueeze(0),
-                attention_mask=worse_attention_mask.unsqueeze(0),
-            )[0]
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+            )
+            better_sequence_log_probs, worse_sequence_log_probs = sequence_log_probs[0], sequence_log_probs[-1]
             
-            # torch.cuda.empty_cache()
-            # with torch.no_grad():
-            #     ref_sequence_log_probs = self.compute_log_probs(
-            #         self.actor_reference_model.module,
-            #         input_ids=input_ids,
-            #         attention_mask=attention_mask,
-            #     )
-            #     ref_better_sequence_log_probs, ref_worse_sequence_log_probs = ref_sequence_log_probs[0], ref_sequence_log_probs[-1]
             with torch.no_grad():
                 torch.cuda.empty_cache()
                 ref_better_sequence_log_probs = self.compute_log_probs(

@@ -34,6 +34,8 @@ from mcts_rl.datasets.raw.math import (
     MATHDataset,
     MATHTestDataset,
     MATHTrainDataset,
+    MATHSFTTrainDataset,
+    MATHSFTTestDataset,
 )
 from mcts_rl.datasets.raw.gsm8k import (
     GSM8KDataset,
@@ -162,4 +164,6 @@ __all__ = [
     'ExamTestDataset',
     'ExamDataset',
     'MathQASFTTrainDataset',
+    'MATHSFTTrainDataset',
+    'MATHSFTTestDataset',
 ]

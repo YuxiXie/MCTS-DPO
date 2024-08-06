@@ -6,7 +6,7 @@ import os
 from typing import ClassVar
 
 from datasets import load_dataset
-from mcts_rl.utils import get_math_data, get_arithmo_data, tqdm
+from mcts_rl.utils import get_math_data, get_arithmo_data, list_to_dict, tqdm
 from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
 
 
@@ -28,6 +28,7 @@ class MathQADataset(RawDataset):
 
     def __init__(self) -> None:
         if self.TYPE == 'pot':
+            raise ValueError('Do not Support PoT for now.')
             ## PoT data
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             raw_arithmo = jsonlines_load(os.path.join(DATA_DIR, f'arithmo/arithmo_code_{self.SPLIT}.jsonl'))
@@ -40,6 +41,7 @@ class MathQADataset(RawDataset):
                 gsm8k[i]['question'] = dt['question'] + ' Write a Python program to solve this.'
             self.data = gsm8k
         elif self.TYPE == 'all':
+            raise ValueError('Do not Support PoT for now.')
             ## CoT + PoT data
             gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
             math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
@@ -55,25 +57,16 @@ class MathQADataset(RawDataset):
                     dt['question'] = dt['question'] + ' Write a Python program to solve this.'
                     self.data.append(dt)
         else:
-            gsm8k = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
-            math = jsonlines_load(os.path.join(DATA_DIR, f'math/math_{self.SPLIT}.jsonl'))
+            gsm8k = load_dataset('openai/gsm8k', 'main', split=self.SPLIT, trust_remote_code=True)
+            math = load_dataset('hendrycks/competition_math', split=self.SPLIT, trust_remote_code=True)
             try:
                 arithmo = get_math_data(load_dataset('akjindal53244/Arithmo-Data', split=self.SPLIT))
             except:
                 arithmo = get_math_data(jsonlines_load(os.path.join(DATA_DIR, 'arithmo/train.jsonl')))
             if self.TYPE == 'sft':
+                arithmo, gsm8k, math = list_to_dict(arithmo), list_to_dict(gsm8k), list_to_dict(math)
                 ## use the corresponding training data seen in SFT
-                mathqa = []
-                for dt in tqdm(arithmo, leave=False):
-                    prompt = dt['question'] if 'question' in dt else dt['problem']
-                    if any(prompt.strip().startswith(x['question'].strip()) for x in gsm8k):
-                        mathqa.append(dt)
-                    elif any(prompt.strip().startswith(x['problem'].strip()) for x in math):
-                        mathqa.append(dt)
-                mathqa_dict = {}
-                for dt in mathqa:
-                    if dt['question'] not in mathqa_dict: mathqa_dict[dt['question']] = []
-                    mathqa_dict[dt['question']].append(dt)
+                mathqa_dict = {k:v for k,v in arithmo.items() if k in math or k in gsm8k}
                 self.data = get_arithmo_data(mathqa_dict)
             else:
                 self.data = gsm8k + math

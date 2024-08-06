@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import os
 from typing import ClassVar
+from datasets import load_dataset
 
-from mcts_rl.datasets.base import RawDataset, RawSample, jsonlines_load
+from mcts_rl.datasets.base import RawDataset, RawSample
+from mcts_rl.utils import extract_answer
 
 
 __all__ = [
@@ -16,24 +18,27 @@ __all__ = [
     'GSM8KPoTTestDataset',
 ]
 
-DATA_DIR = "path_to_dataset_folder"
-
 
 class GSM8KDataset(RawDataset):
     SPLIT: ClassVar[str]
     PTYPE: ClassVar[str]
 
     def __init__(self) -> None:
-        self.data = jsonlines_load(os.path.join(DATA_DIR, f'gsm8k/gsm8k_{self.SPLIT}.jsonl'))
+        if self.PTYPE != 'pot':
+            self.data = load_dataset('openai/gsm8k', 'main', split=self.SPLIT, trust_remote_code=True)
+        else:
+            raise ValueError('Do not Support PoT for now.')
 
     def __getitem__(self, index: int) -> RawSample:
         data = self.data[index]
         prompt = data['question'] + ' Write a Python program to solve this.' if self.PTYPE == 'pot' else data['question']
+        answer = extract_answer(data['answer'])
+        solution = f'{data["answer"]}\nThe answer is {answer}'
         return RawSample(
             input=prompt,
-            answer=data['solution'],
-            final_answer=data.get('answer', None),
-            final_answer_content=data.get('answer', None),
+            answer=solution,
+            final_answer=answer,
+            final_answer_content=answer,
         )
 
     def __len__(self) -> int:

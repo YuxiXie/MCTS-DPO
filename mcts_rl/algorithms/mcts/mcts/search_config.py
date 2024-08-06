@@ -290,7 +290,7 @@ class StepLMConfig(SearchConfig):
             if len(_solution_steps) < 2 and not self.use_code:
                 _solution_steps = sent_tokenize(self.example['reasoning'].strip())
                 newline_flag = False
-            if not self.use_code:
+            if not self.use_code and ' answer is' not in _solution_steps[-1]:
                 _solution_steps.append("The answer is {}{}".format(self.example['answer'], "<|eot_id|>" if self.model_type == 'llama3' else self.base_tokenizer.eos_token))
             solution_steps = []
             for i, x in enumerate(_solution_steps):
@@ -522,7 +522,7 @@ class StepLMConfig(SearchConfig):
                     if len(_solution_steps) < 2 and not self.use_code:
                         _solution_steps = sent_tokenize(self.example['reasoning'].strip())
                         newline_flag = False
-                    if not self.use_code:
+                    if not self.use_code and ' answer is' not in _solution_steps[-1]:
                         _solution_steps.append("The answer is {}{}".format(self.example['answer'], "<|eot_id|>" if self.model_type == 'llama3' else self.base_tokenizer.eos_token))
                     solution_steps = []
                     for i, x in enumerate(_solution_steps):

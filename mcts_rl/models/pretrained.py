@@ -27,7 +27,7 @@ from transformers import (
     PreTrainedModel,
     PreTrainedTokenizerBase,
 )
-from peft import PeftModelForCausalLM
+# from peft import PeftModelForCausalLM
 
 from mcts_rl.configs import (
     DEFAULT_BOS_TOKEN,
@@ -201,16 +201,16 @@ def load_pretrained_models(  # pylint: disable=too-many-arguments
     )
     resize_tokenizer_embedding(tokenizer=tokenizer, model=model)
     
-    if lora_enable and auto_model_type != PeftModelForCausalLM:
-        from peft import LoraConfig, get_peft_model
-        lora_config = LoraConfig(
-            r=lora_r,
-            lora_alpha=lora_alpha,
-            target_modules=['q_proj', 'v_proj'],    # find_all_linear_names(model),
-            lora_dropout=lora_dropout,
-            bias=lora_bias,
-            task_type="FEATURE_EXTRACTION" if auto_model_type == AutoModelForScore else "CAUSAL_LM",
-        )
-        model = get_peft_model(model, lora_config)
+    # if lora_enable and auto_model_type != PeftModelForCausalLM:
+    #     from peft import LoraConfig, get_peft_model
+    #     lora_config = LoraConfig(
+    #         r=lora_r,
+    #         lora_alpha=lora_alpha,
+    #         target_modules=['q_proj', 'v_proj'],    # find_all_linear_names(model),
+    #         lora_dropout=lora_dropout,
+    #         bias=lora_bias,
+    #         task_type="FEATURE_EXTRACTION" if auto_model_type == AutoModelForScore else "CAUSAL_LM",
+    #     )
+    #     model = get_peft_model(model, lora_config)
     
     return model, tokenizer

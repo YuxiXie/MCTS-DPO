@@ -1,4 +1,4 @@
-from mcts_rl import algorithms, configs, datasets, models, trainers, utils, values
+from mcts_rl import algorithms, configs, datasets, models, trainers, utils
 from mcts_rl.algorithms import *  # noqa: F403
 from mcts_rl.configs import *  # noqa: F403
 from mcts_rl.datasets import *  # noqa: F403

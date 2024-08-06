@@ -767,3 +767,13 @@ def get_final_qa_index(input_ids):
             question_index = idx - (len(QUESTION_TOKEN_IDS) - 1)
             break
     return question_index.item()
+
+
+def list_to_dict(data):
+    _dict = {}
+    for dt in data:
+        prompt = dt['question'] if 'question' in dt else dt['problem']
+        if prompt not in _dict:
+            _dict[prompt] = []
+        _dict[prompt].append(dt)
+    return _dict
