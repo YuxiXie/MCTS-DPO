@@ -3,7 +3,7 @@ transformers >= 4.28
 datasets
 tokenizers >= 0.13.3
 accelerate
-deepspeed
+pyproject-toml
 numpy
 scipy
 sentencepiece
@@ -13,3 +13,7 @@ optree
 matplotlib
 tqdm
 rich
+nltk
+peft
+bert_score
+graphviz
