@@ -5,6 +5,10 @@ Below is the framework of our proposed method.
 
 ![Model Framework](framework-colorblindfriendly.jpg)
 
+#### Update
+
+To run rollout with vLLM: Check our new [repo](https://github.com/YuxiXie/Fast-MCTS-DPO).
+
 #### Environment Setup
 
 ```sh
